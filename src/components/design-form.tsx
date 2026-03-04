@@ -24,6 +24,7 @@ import { createDesign, updateDesign } from '@/lib/actions';
 import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
+import { SheetClose } from '@/components/ui/sheet';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -38,12 +39,14 @@ type DesignFormValues = z.infer<typeof formSchema>;
 
 interface DesignFormProps {
   design?: Design;
+  view?: 'page' | 'sheet';
 }
 
-export function DesignForm({ design }: DesignFormProps) {
+export function DesignForm({ design, view = 'page' }: DesignFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
+  const isSheet = view === 'sheet';
 
   const defaultValues = design ? {
     ...design,
@@ -118,14 +121,9 @@ export function DesignForm({ design }: DesignFormProps) {
   };
   
   const tagsValue = form.watch('tags');
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{design ? 'Edit Design Project' : 'Add New Design Project'}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
+  
+  const formContent = (
+      <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
@@ -225,9 +223,15 @@ export function DesignForm({ design }: DesignFormProps) {
               )}
             />
             <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" asChild>
-                <Link href={design ? `/designs/${design.id}` : '/'}>Cancel</Link>
-              </Button>
+              {isSheet ? (
+                 <SheetClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                </SheetClose>
+              ) : (
+                <Button type="button" variant="outline" asChild>
+                    <Link href={design ? `/designs/${design.id}` : '/'}>Cancel</Link>
+                </Button>
+              )}
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {design ? 'Save Changes' : 'Create Project'}
@@ -235,6 +239,19 @@ export function DesignForm({ design }: DesignFormProps) {
             </div>
           </form>
         </Form>
+  );
+
+  if (isSheet) {
+    return formContent;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{design ? 'Edit Design Project' : 'Add New Design Project'}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {formContent}
       </CardContent>
     </Card>
   );
