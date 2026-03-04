@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "img1",
+      "description": "Abstract design 1",
+      "imageUrl": "https://images.unsplash.com/photo-1600327222811-3a13fc41dd8e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBkZXNpZ258ZW58MHx8fHwxNzcyNTc0NDI5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract design"
+    },
+    {
+      "id": "img2",
+      "description": "Abstract design 2",
+      "imageUrl": "https://picsum.photos/seed/2/600/400",
+      "imageHint": "tech interface"
+    },
+    {
+      "id": "img3",
+      "description": "Abstract design 3",
+      "imageUrl": "https://picsum.photos/seed/3/600/400",
+      "imageHint": "modern architecture"
+    },
+    {
+      "id": "img4",
+      "description": "Abstract design 4",
+      "imageUrl": "https://picsum.photos/seed/4/600/400",
+      "imageHint": "dashboard analytics"
+    }
+  ]
 }
