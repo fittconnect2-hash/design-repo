@@ -49,8 +49,8 @@ export default async function DesignDetailsPage({ params }: { params: { id: stri
           <CardContent className="p-6">
             <CardTitle className="text-3xl font-headline font-bold">{design.name}</CardTitle>
             <div className="my-4 flex flex-wrap gap-2">
-              {design.tags.map(tag => (
-                <Badge key={tag} variant="secondary">{tag}</Badge>
+              {design.tags.map((tag, index) => (
+                <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
               ))}
             </div>
             <CardDescription className="text-base text-foreground/80">{design.description}</CardDescription>

@@ -10,7 +10,7 @@ let designs: Design[] = PlaceHolderImages.map((img, index) => ({
     figmaUrl: 'https://figma.com',
     prototypeUrl: 'https://figma.com/proto',
     imageUrl: img.imageUrl,
-    tags: [...img.imageHint.split(' '), 'design', 'creative'],
+    tags: [...new Set([...img.imageHint.split(' '), 'design', 'creative'])],
 }));
 
 // Simulate network delay

@@ -99,8 +99,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <div className="flex flex-wrap gap-1">
-                      {design.tags.slice(0, 3).map(tag => (
-                        <Badge key={tag} variant="secondary">{tag}</Badge>
+                      {design.tags.slice(0, 3).map((tag, index) => (
+                        <Badge key={`${design.id}-${tag}-${index}`} variant="secondary">{tag}</Badge>
                       ))}
                     </div>
                   </TableCell>
