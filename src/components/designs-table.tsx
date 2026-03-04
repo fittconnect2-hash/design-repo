@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Share2 } from 'lucide-react';
 
 import type { Design } from '@/lib/definitions';
 import { deleteDesign } from '@/lib/actions';
@@ -44,6 +44,23 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [selectedDesignId, setSelectedDesignId] = React.useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleShare = (designId: string) => {
+    const url = `${window.location.origin}/designs/${designId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: 'Link Copied!',
+        description: 'The project link has been copied to your clipboard.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to copy link.',
+      });
+    });
+  };
 
   const handleDelete = async () => {
     if (selectedDesignId) {
@@ -118,6 +135,13 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => handleShare(design.id)}
+                          className="cursor-pointer"
+                        >
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Share
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href={`/designs/${design.id}/edit`} className="flex cursor-pointer items-center">

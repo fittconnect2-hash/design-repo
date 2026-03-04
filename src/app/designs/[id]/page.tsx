@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ShareButton } from '@/components/share-button';
 
 export default async function DesignDetailsPage({ params }: { params: { id: string } }) {
   const design = await getDesignById(params.id);
@@ -25,12 +26,15 @@ export default async function DesignDetailsPage({ params }: { params: { id: stri
               All Projects
             </Link>
           </Button>
-          <Button asChild>
-            <Link href={`/designs/${design.id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ShareButton />
+            <Button asChild>
+              <Link href={`/designs/${design.id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
       <main className="container mx-auto max-w-4xl p-4 md:p-6">
