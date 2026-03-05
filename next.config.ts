@@ -30,13 +30,13 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'prnt.sc',
+        hostname: 'firebasestorage.googleapis.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
+        hostname: 'i.imgur.com',
         port: '',
         pathname: '/**',
       },
