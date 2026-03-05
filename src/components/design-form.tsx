@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,16 +21,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { Design } from '@/lib/definitions';
-import { createDesign, updateDesign } from '@/lib/actions';
 import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  figmaUrl: z.string().url({ message: 'Please enter a valid URL.' }),
+  figmaLink: z.string().url({ message: 'Please enter a valid URL.' }),
   prototypeUrl: z.string().url({ message: 'Please enter a valid URL.' }),
   imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }),
   tags: z.string().optional(),
@@ -40,21 +43,25 @@ type DesignFormValues = z.infer<typeof formSchema>;
 interface DesignFormProps {
   design?: Design;
   view?: 'page' | 'sheet';
+  onSuccess?: () => void;
 }
 
-export function DesignForm({ design, view = 'page' }: DesignFormProps) {
+export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
   const isSheet = view === 'sheet';
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
 
   const defaultValues = design ? {
     ...design,
-    tags: design.tags.join(', '),
+    tags: design.tags?.join(', '),
   } : {
     name: '',
     description: '',
-    figmaUrl: '',
+    figmaLink: '',
     prototypeUrl: '',
     imageUrl: '',
     tags: '',
@@ -67,26 +74,67 @@ export function DesignForm({ design, view = 'page' }: DesignFormProps) {
   });
 
   const onSubmit = (values: DesignFormValues) => {
-    startTransition(async () => {
-      const formData = new FormData();
-      Object.entries(values).forEach(([key, value]) => {
-        formData.append(key, value || '');
-      });
+    if (!auth.currentUser) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
+      return;
+    }
+    const { uid } = auth.currentUser;
+    
+    startTransition(() => {
+      const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-      try {
-        if (design) {
-          await updateDesign(design.id, formData);
-          toast({ title: 'Success', description: 'Design updated successfully.' });
-        } else {
-          await createDesign(formData);
-          toast({ title: 'Success', description: 'Design created successfully.' });
-        }
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Something went wrong. Please try again.',
-        });
+      if (design) {
+        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+        const dataToUpdate = {
+          ...values,
+          tags: tagsArray,
+          updatedAt: serverTimestamp(),
+        };
+        
+        setDoc(designRef, dataToUpdate, { merge: true })
+          .then(() => {
+            toast({ title: 'Success', description: 'Design updated successfully.' });
+            if (!isSheet) {
+              router.push(`/designs/${design.id}`);
+            } else if (onSuccess) {
+              onSuccess();
+            }
+          })
+          .catch(() => {
+            const permissionError = new FirestorePermissionError({
+              path: designRef.path,
+              operation: 'update',
+              requestResourceData: dataToUpdate,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update design.' });
+          });
+      } else {
+        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+        const dataToCreate = {
+          ...values,
+          userId: uid,
+          tags: tagsArray,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        addDoc(collectionRef, dataToCreate)
+          .then(() => {
+            toast({ title: 'Success', description: 'Design created successfully.' });
+            if (onSuccess) {
+              onSuccess();
+            }
+          })
+          .catch(() => {
+            const permissionError = new FirestorePermissionError({
+              path: collectionRef.path,
+              operation: 'create',
+              requestResourceData: dataToCreate,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to create design.' });
+          });
       }
     });
   };
@@ -185,7 +233,7 @@ export function DesignForm({ design, view = 'page' }: DesignFormProps) {
             </div>
             <FormField
               control={form.control}
-              name="figmaUrl"
+              name="figmaLink"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Figma Link</FormLabel>
@@ -224,11 +272,11 @@ export function DesignForm({ design, view = 'page' }: DesignFormProps) {
             />
             <div className="flex justify-end gap-4">
               {isSheet ? (
-                 <SheetClose asChild>
-                    <Button type="button" variant="outline">Cancel</Button>
+                <SheetClose asChild>
+                  <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
                 </SheetClose>
               ) : (
-                <Button type="button" variant="outline" asChild>
+                <Button type="button" variant="outline" asChild disabled={isPending}>
                     <Link href={design ? `/designs/${design.id}` : '/'}>Cancel</Link>
                 </Button>
               )}

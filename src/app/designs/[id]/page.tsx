@@ -1,16 +1,78 @@
-import { getDesignById } from '@/lib/data';
-import { notFound } from 'next/navigation';
+'use client';
+
+import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Edit, ExternalLink, Figma } from 'lucide-react';
+import { ArrowLeft, Edit, ExternalLink, Figma, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ShareButton } from '@/components/share-button';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { Design } from '@/lib/definitions';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function DesignDetailsPage({ params }: { params: { id: string } }) {
-  const design = await getDesignById(params.id);
+function DesignDetailsSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+          <Skeleton className="h-8 w-24" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-20" />
+          </div>
+        </div>
+      </header>
+      <main className="container mx-auto max-w-4xl p-4 md:p-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="p-0">
+             <Skeleton className="aspect-video w-full" />
+          </CardHeader>
+          <CardContent className="p-6">
+            <Skeleton className="h-10 w-3/4" />
+            <div className="my-4 flex flex-wrap gap-2">
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-24 rounded-full" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+            </div>
+            <Separator className="my-6" />
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+             </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
+
+
+export default function DesignDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const designRef = useMemoFirebase(() => {
+    if (!user || !params.id) return null;
+    return doc(firestore, 'users', user.uid, 'designProjects', params.id);
+  }, [firestore, user, params.id]);
+
+  const { data: design, isLoading: isDesignLoading } = useDoc<Design>(designRef);
+
+  const isLoading = isUserLoading || isDesignLoading;
+
+  if (isLoading) {
+    return <DesignDetailsSkeleton />;
+  }
 
   if (!design) {
     notFound();
@@ -62,14 +124,14 @@ export default async function DesignDetailsPage({ params }: { params: { id: stri
             <Separator className="my-6" />
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <a href={design.figmaUrl} target="_blank" rel="noopener noreferrer" className="group">
+                <a href={design.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
                     <Card className="h-full transition-all hover:border-primary hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
                             <Figma className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.figmaUrl}</div>
+                            <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.figmaLink}</div>
                         </CardContent>
                     </Card>
                 </a>

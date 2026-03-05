@@ -1,12 +1,57 @@
+'use client';
+
 import { DesignForm } from '@/components/design-form';
-import { getDesignById } from '@/lib/data';
-import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { notFound, useParams } from 'next/navigation';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { Design } from '@/lib/definitions';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function EditDesignPage({ params }: { params: { id: string } }) {
-  const design = await getDesignById(params.id);
+function EditDesignSkeleton() {
+  return (
+     <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto flex h-16 items-center px-4 md:px-6">
+          <Skeleton className="h-8 w-32" />
+        </div>
+      </header>
+      <main className="container mx-auto max-w-2xl p-4 md:p-6">
+        <div className="space-y-8">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <div className="flex justify-end gap-4">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default function EditDesignPage() {
+  const params = useParams<{ id: string }>();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const designRef = useMemoFirebase(() => {
+    if (!user || !params.id) return null;
+    return doc(firestore, 'users', user.uid, 'designProjects', params.id);
+  }, [firestore, user, params.id]);
+
+  const { data: design, isLoading: isDesignLoading } = useDoc<Design>(designRef);
+
+  const isLoading = isUserLoading || isDesignLoading;
+
+  if (isLoading) {
+    return <EditDesignSkeleton />;
+  }
 
   if (!design) {
     notFound();

@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function AddDesignButton() {
   const [isMounted, setIsMounted] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -32,7 +33,7 @@ export function AddDesignButton() {
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -48,7 +49,7 @@ export function AddDesignButton() {
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-6.5rem)]">
           <div className="px-6 pb-6">
-            <DesignForm view="sheet" />
+            <DesignForm view="sheet" onSuccess={() => setOpen(false)} />
           </div>
         </ScrollArea>
       </SheetContent>

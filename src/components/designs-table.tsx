@@ -6,8 +6,6 @@ import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Eye, Share2 } from 'lucide-react';
 
 import type { Design } from '@/lib/definitions';
-import { deleteDesign } from '@/lib/actions';
-
 import {
   Table,
   TableBody,
@@ -35,6 +33,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
+
 
 interface DesignsTableProps {
   designs: Design[];
@@ -44,6 +45,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [selectedDesignId, setSelectedDesignId] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const handleShare = (designId: string) => {
     const url = `${window.location.origin}/designs/${designId}`;
@@ -63,24 +66,31 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   };
 
   const handleDelete = async () => {
-    if (selectedDesignId) {
-      try {
-        await deleteDesign(selectedDesignId);
-        toast({
-          title: 'Success',
-          description: 'Design project deleted successfully.',
+    if (selectedDesignId && auth.currentUser) {
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', selectedDesignId);
+      
+      deleteDoc(designRef)
+        .then(() => {
+          toast({
+            title: 'Success',
+            description: 'Design project deleted successfully.',
+          });
+        })
+        .catch(() => {
+          const permissionError = new FirestorePermissionError({
+            path: designRef.path,
+            operation: 'delete',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to delete design project.',
+          });
         });
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to delete design project.',
-        });
-      } finally {
-        setDeleteDialogOpen(false);
-        setSelectedDesignId(null);
-      }
     }
+    setDeleteDialogOpen(false);
+    setSelectedDesignId(null);
   };
 
   return (
@@ -167,7 +177,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  No design projects yet.
+                  No design projects yet. Start by adding one!
                 </TableCell>
               </TableRow>
             )}

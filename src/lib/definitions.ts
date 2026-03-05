@@ -1,10 +1,12 @@
 export type Design = {
   id: string;
-  ownerId: string;
+  userId: string;
   name: string;
   description: string;
-  figmaUrl: string;
+  figmaLink: string;
   prototypeUrl: string;
   imageUrl: string;
   tags: string[];
+  createdAt?: any;
+  updatedAt?: any;
 };
