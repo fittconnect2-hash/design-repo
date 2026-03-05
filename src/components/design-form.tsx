@@ -61,17 +61,13 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const auth = useAuth();
   const router = useRouter();
 
-  const defaultValues = design ? {
-    ...design,
-    tags: design.tags?.join(', '),
+  const defaultValues = {
+    name: design?.name || '',
+    description: design?.description || '',
+    figmaLink: design?.figmaLink || '',
+    prototypeUrl: design?.prototypeUrl || '',
     image: undefined,
-  } : {
-    name: '',
-    description: '',
-    figmaLink: '',
-    prototypeUrl: '',
-    image: undefined,
-    tags: '',
+    tags: design?.tags?.join(', ') || '',
   };
 
   const form = useForm<DesignFormValues>({
