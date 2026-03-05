@@ -244,15 +244,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             <FormField
               control={form.control}
               name="image"
-              render={({ field: { onChange, ...fieldProps } }) => (
+              render={({ field: { onChange, onBlur, name, ref } }) => (
                 <FormItem>
                   <FormLabel>Project Image</FormLabel>
                   <FormControl>
                     <Input 
                       type="file" 
                       accept="image/*"
+                      ref={ref}
+                      name={name}
+                      onBlur={onBlur}
                       onChange={(e) => onChange(e.target.files)}
-                      {...fieldProps}
                     />
                   </FormControl>
                   {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
