@@ -97,26 +97,26 @@ export function DesignsTable({ designs }: DesignsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {designs.length > 0 ? (
+            {designs && designs.length > 0 ? (
               designs.map(design => (
                 <TableRow key={design.id}>
                   <TableCell className="hidden md:table-cell">
                     <Image
-                      src={design.imageUrl}
-                      alt={design.name}
+                      src={design.imageUrl || `https://picsum.photos/seed/${design.id}/80/60`}
+                      alt={design.name || 'Design thumbnail'}
                       width={80}
                       height={60}
                       className="rounded-md object-cover"
                       data-ai-hint="design thumbnail"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{design.name}</TableCell>
+                  <TableCell className="font-medium">{design.name || 'Untitled Project'}</TableCell>
                   <TableCell className="hidden lg:table-cell max-w-sm truncate">
-                    {design.description}
+                    {design.description || 'No description available.'}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <div className="flex flex-wrap gap-1">
-                      {design.tags.slice(0, 3).map((tag, index) => (
+                      {design.tags?.slice(0, 3).map((tag, index) => (
                         <Badge key={`${design.id}-${tag}-${index}`} variant="secondary">{tag}</Badge>
                       ))}
                     </div>

@@ -1,3 +1,4 @@
+'use server';
 import 'server-only';
 import type { Design } from '@/lib/definitions';
 import { PlaceHolderImages } from './placeholder-images';
@@ -5,6 +6,7 @@ import { PlaceHolderImages } from './placeholder-images';
 // In-memory store
 let designs: Design[] = PlaceHolderImages.map((img, index) => ({
     id: `design-${index + 1}`,
+    ownerId: `user-${index + 1}`,
     name: `Project ${img.imageHint.charAt(0).toUpperCase() + img.imageHint.slice(1)}`,
     description: `A design project focusing on ${img.imageHint}. This project explores modern design principles and user experience strategies to deliver an intuitive and visually appealing product.`,
     figmaUrl: 'https://figma.com',

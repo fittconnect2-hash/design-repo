@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { addDesign, updateDesign as updateDesignData, deleteDesign as deleteDesignData } from '@/lib/data';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirebaseAdminApp } from '@/firebase/admin';
 
 const DesignSchema = z.object({
     name: z.string().min(1, 'Name is required.'),
@@ -14,6 +16,21 @@ const DesignSchema = z.object({
     tags: z.string().transform(val => val.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)),
 });
 
+async function getUserId() {
+    try {
+        const auth = getAuth(getFirebaseAdminApp());
+        // This is a placeholder for getting the current user's ID.
+        // In a real app, you'd get this from the session or token.
+        // As we are not using a real session management, we will simulate a user.
+        return 'user-1'; 
+    } catch(e) {
+        // This is a placeholder for getting the current user's ID.
+        // In a real app, you'd get this from the session or token.
+        // As we are not using a real session management, we will simulate a user.
+        return 'user-1';
+    }
+}
+
 export async function createDesign(formData: FormData) {
     const rawFormData = Object.fromEntries(formData.entries());
     const validatedFields = DesignSchema.safeParse(rawFormData);
@@ -22,9 +39,11 @@ export async function createDesign(formData: FormData) {
         console.error(validatedFields.error.flatten().fieldErrors);
         throw new Error('Validation failed. Check server logs.');
     }
+    
+    const ownerId = await getUserId();
 
     try {
-        await addDesign(validatedFields.data);
+        await addDesign({...validatedFields.data, ownerId});
     } catch (error) {
         console.error(error);
         throw new Error('Failed to create design.');
@@ -43,8 +62,10 @@ export async function updateDesign(id: string, formData: FormData) {
         throw new Error('Validation failed. Check server logs.');
     }
     
+    const ownerId = await getUserId();
+
     try {
-        await updateDesignData(id, validatedFields.data);
+        await updateDesignData(id, {...validatedFields.data, ownerId});
     } catch (error) {
         console.error(error);
         throw new Error('Failed to update design.');
