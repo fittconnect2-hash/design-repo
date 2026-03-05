@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useTransition, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,8 +26,10 @@ import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useAuth, useFirestore, useStorage, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { Progress } from '@/components/ui/progress';
 
 
 const formSchema = z.object({
@@ -34,7 +37,7 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   figmaLink: z.string().url({ message: 'Please enter a valid URL.' }),
   prototypeUrl: z.string().url({ message: 'Please enter a valid URL.' }),
-  imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }),
+  image: z.any(),
   tags: z.string().optional(),
 });
 
@@ -50,20 +53,24 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isSheet = view === 'sheet';
   const firestore = useFirestore();
+  const storage = useStorage();
   const auth = useAuth();
   const router = useRouter();
 
   const defaultValues = design ? {
     ...design,
     tags: design.tags?.join(', '),
+    image: undefined,
   } : {
     name: '',
     description: '',
     figmaLink: '',
     prototypeUrl: '',
-    imageUrl: '',
+    image: undefined,
     tags: '',
   };
 
@@ -73,70 +80,109 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
 
-  const onSubmit = (values: DesignFormValues) => {
+  const onSubmit = async (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
-    const { uid } = auth.currentUser;
     
-    startTransition(() => {
-      const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+    setIsSubmitting(true);
 
-      if (design) {
-        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        const dataToUpdate = {
-          ...values,
-          tags: tagsArray,
-          updatedAt: serverTimestamp(),
-        };
-        
-        setDoc(designRef, dataToUpdate, { merge: true })
-          .then(() => {
-            toast({ title: 'Success', description: 'Design updated successfully.' });
-            if (!isSheet) {
-              router.push(`/designs/${design.id}`);
-            } else if (onSuccess) {
-              onSuccess();
-            }
-          })
-          .catch(() => {
-            const permissionError = new FirestorePermissionError({
-              path: designRef.path,
-              operation: 'update',
-              requestResourceData: dataToUpdate,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update design.' });
-          });
-      } else {
-        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        const dataToCreate = {
-          ...values,
-          userId: uid,
-          tags: tagsArray,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
+    const { uid } = auth.currentUser;
+    const imageFile = values.image?.[0];
+    let imageUrl = design?.imageUrl;
 
-        addDoc(collectionRef, dataToCreate)
-          .then(() => {
-            toast({ title: 'Success', description: 'Design created successfully.' });
-            if (onSuccess) {
-              onSuccess();
+    if (imageFile) {
+      const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
+      const storageRef = ref(storage, filePath);
+      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+      try {
+        imageUrl = await new Promise<string>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+            },
+            (error) => {
+              console.error("Upload failed", error);
+              toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the image. Please try again.' });
+              reject(error);
+            },
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
             }
-          })
-          .catch(() => {
-            const permissionError = new FirestorePermissionError({
-              path: collectionRef.path,
-              operation: 'create',
-              requestResourceData: dataToCreate,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to create design.' });
-          });
+          );
+        });
+      } catch (error) {
+        setIsSubmitting(false);
+        setUploadProgress(null);
+        return;
       }
-    });
+    }
+
+    setUploadProgress(null);
+
+    if (!imageUrl) {
+        toast({ variant: 'destructive', title: 'Error', description: 'An image is required for the project.' });
+        setIsSubmitting(false);
+        return;
+    }
+
+    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+
+    const handleSuccess = () => {
+      const action = design ? 'updated' : 'created';
+      toast({ title: 'Success', description: `Design ${action} successfully.` });
+      if (onSuccess) onSuccess();
+      else if (!isSheet && design) router.push(`/designs/${design.id}`);
+      
+      form.reset();
+      setIsSubmitting(false);
+    }
+    
+    const handleError = (path: string, operation: 'create' | 'update', data: any) => {
+      const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to ${operation} design.` });
+      setIsSubmitting(false);
+    }
+    
+    if (design) {
+      const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+      const dataToUpdate = {
+        name: values.name,
+        description: values.description,
+        figmaLink: values.figmaLink,
+        prototypeUrl: values.prototypeUrl,
+        imageUrl,
+        tags: tagsArray,
+        updatedAt: serverTimestamp(),
+      };
+      
+      setDoc(designRef, dataToUpdate, { merge: true })
+        .then(handleSuccess)
+        .catch(() => handleError(designRef.path, 'update', dataToUpdate));
+
+    } else {
+      const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+      const dataToCreate = {
+        name: values.name,
+        description: values.description,
+        figmaLink: values.figmaLink,
+        prototypeUrl: values.prototypeUrl,
+        userId: uid,
+        imageUrl,
+        tags: tagsArray,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      addDoc(collectionRef, dataToCreate)
+        .then(handleSuccess)
+        .catch(() => handleError(collectionRef.path, 'create', dataToCreate));
+    }
   };
 
   const handleSuggestTags = async () => {
@@ -199,10 +245,37 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field: { onChange, ...fieldProps } }) => (
+                <FormItem>
+                  <FormLabel>Project Image</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => onChange(e.target.files)}
+                      {...fieldProps}
+                    />
+                  </FormControl>
+                  {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
+                  {!form.watch('image')?.[0] && design?.imageUrl && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm text-muted-foreground">Current Image:</p>
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden border">
+                        <Image src={design.imageUrl} alt="Current project image" fill className="object-cover" />
+                      </div>
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <FormLabel>Tags</FormLabel>
-                    <Button type="button" variant="outline" size="sm" onClick={handleSuggestTags} disabled={isSuggestingTags}>
+                    <Button type="button" variant="outline" size="sm" onClick={handleSuggestTags} disabled={isSuggestingTags || isSubmitting}>
                         {isSuggestingTags ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -257,31 +330,18 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://images.unsplash.com/..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <div className="flex justify-end gap-4">
               {isSheet ? (
                 <SheetClose asChild>
-                  <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+                  <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
                 </SheetClose>
               ) : (
-                <Button type="button" variant="outline" asChild disabled={isPending}>
+                <Button type="button" variant="outline" asChild disabled={isSubmitting}>
                     <Link href={design ? `/designs/${design.id}` : '/'}>Cancel</Link>
                 </Button>
               )}
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {design ? 'Save Changes' : 'Create Project'}
               </Button>
             </div>
