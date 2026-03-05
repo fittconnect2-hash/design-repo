@@ -35,8 +35,8 @@ import { Progress } from '@/components/ui/progress';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  figmaLink: z.string().url({ message: 'Please enter a valid URL.' }),
-  prototypeUrl: z.string().url({ message: 'Please enter a valid URL.' }),
+  figmaLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  prototypeUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   image: z.any(),
   tags: z.string().optional(),
 });
@@ -75,70 +75,62 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
   
-  const imageRef = form.register('image');
+  const imageField = form.register('image');
 
   const onSubmit = (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
-  
+
     setIsSubmitting(true);
     setUploadProgress(null);
     const { uid } = auth.currentUser;
-  
-    const handleGeneralFailure = (title: string, message: string) => {
-      toast({ variant: 'destructive', title, description: message });
+
+    const stopLoadingAndShowError = (title: string, description: string) => {
+      toast({ variant: 'destructive', title, description });
       setIsSubmitting(false);
       setUploadProgress(null);
     };
-  
+
     const saveDataToFirestore = (imageUrl: string) => {
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-  
-      const handleSuccess = (isUpdate: boolean) => {
-        const action = isUpdate ? 'updated' : 'created';
-        toast({ title: 'Success', description: `Design ${action} successfully.` });
+      const { image, ...restOfValues } = values;
+
+      const handleWriteSuccess = (isUpdate: boolean) => {
+        toast({ title: 'Success', description: `Design ${isUpdate ? 'updated' : 'created'} successfully.` });
         if (onSuccess) onSuccess();
-        if (isUpdate && design) {
-          router.push(`/designs/${design.id}`);
-        } else {
-          form.reset();
+        if (!isUpdate) {
+          form.reset(defaultValues);
         }
         router.refresh();
         setIsSubmitting(false);
         setUploadProgress(null);
       };
-  
-      const handlePermissionError = (operation: 'create' | 'update' | 'write', path: string, data: any) => {
+
+      const handleWriteError = (operation: 'create' | 'update', path: string, data: any) => {
         const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
         errorEmitter.emit('permission-error', permissionError);
-        handleGeneralFailure(`Permission Denied`, `Failed to ${operation} design project.`);
+        stopLoadingAndShowError(`Permission Denied`, `Failed to ${operation} project.`);
       };
-  
+
       if (design) {
         // --- UPDATE LOGIC ---
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
-          name: values.name,
-          description: values.description,
-          figmaLink: values.figmaLink,
-          prototypeUrl: values.prototypeUrl,
+          ...restOfValues,
           imageUrl,
           tags: tagsArray,
           updatedAt: serverTimestamp(),
         };
         setDoc(designRef, dataToUpdate, { merge: true })
-          .then(() => handleSuccess(true))
-          .catch(() => handlePermissionError('update', designRef.path, dataToUpdate));
+          .then(() => handleWriteSuccess(true))
+          .catch(() => handleWriteError('update', designRef.path, dataToUpdate));
       } else {
         // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
         const dataToCreate = {
-          name: values.name,
-          description: values.description,
-          figmaLink: values.figmaLink,
-          prototypeUrl: values.prototypeUrl,
+          ...restOfValues,
           userId: uid,
           imageUrl,
           tags: tagsArray,
@@ -146,18 +138,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           updatedAt: serverTimestamp(),
         };
         addDoc(collectionRef, dataToCreate)
-          .then(() => handleSuccess(false))
-          .catch(() => handlePermissionError('create', collectionRef.path, dataToCreate));
+          .then(() => handleWriteSuccess(false))
+          .catch(() => handleWriteError('create', collectionRef.path, dataToCreate));
       }
     };
-  
-    // --- UPLOAD OR GET IMAGE URL ---
+
     const imageFile = values.image?.[0];
-    if (imageFile) {
+    if (imageFile instanceof File) {
       const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
       const storageRef = ref(storage, filePath);
       const uploadTask = uploadBytesResumable(storageRef, imageFile);
-  
+
       uploadTask.on('state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -165,7 +156,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         },
         (error) => {
           console.error("Image upload failed:", error);
-          handleGeneralFailure('Image Upload Failed', error.message || 'Could not upload image.');
+          stopLoadingAndShowError('Image Upload Failed', error.message || 'Could not upload image.');
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
@@ -174,20 +165,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             })
             .catch((error) => {
               console.error("Getting download URL failed:", error);
-              handleGeneralFailure('Image URL Error', 'Could not get image URL after upload.');
+              stopLoadingAndShowError('Image URL Error', 'Could not get image URL after upload.');
             });
         }
       );
+    } else if (design?.imageUrl) {
+      // If editing and no new image is provided, use the existing URL
+      saveDataToFirestore(design.imageUrl);
     } else {
-      const existingImageUrl = design?.imageUrl;
-      if (existingImageUrl) {
-        saveDataToFirestore(existingImageUrl);
-      } else {
-        handleGeneralFailure('Validation Error', 'An image is required to create a new project.');
-      }
+      stopLoadingAndShowError('Validation Error', 'An image is required to create a new project.');
     }
   };
-
 
   const handleSuggestTags = async () => {
     const name = form.getValues('name');
@@ -255,7 +243,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 <Input 
                   type="file" 
                   accept="image/*"
-                  {...imageRef}
+                  {...imageField}
                 />
               </FormControl>
               {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
