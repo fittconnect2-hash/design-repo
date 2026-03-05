@@ -105,7 +105,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         const newDocRef = doc(collectionRef); // Creates a ref with a new auto-generated ID
         const dataToCreate = {
           ...baseData,
-          id: newDocRef.id, // Store the document ID within the document
+          // The ID is now handled by Firestore and the data hooks, no need to save it in the document
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
