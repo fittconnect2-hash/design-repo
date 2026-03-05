@@ -1,3 +1,5 @@
+'use client';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps as getAdminApps } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
@@ -43,9 +45,20 @@ export async function POST(request: NextRequest) {
 
     // Return the public URL to the client
     return NextResponse.json({ imageUrl: publicUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload API error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: 'Upload failed on the server.', details: errorMessage }, { status: 500 });
+    
+    let userFriendlyMessage = 'An unknown error occurred during upload.';
+    const errorMessage = error.message || '';
+
+    // Check for the specific "bucket not found" error. This is a common issue
+    // if Firebase Storage has not been enabled in the Firebase Console.
+    if (error.code === 404 && (errorMessage.includes('bucket') || errorMessage.includes('does not exist'))) {
+        userFriendlyMessage = `The Firebase Storage bucket "${firebaseConfig.storageBucket}" was not found. Please go to your Firebase Console, navigate to the "Storage" section, and click "Get Started" to create the default bucket. This is a required one-time setup step.`;
+    } else {
+        userFriendlyMessage = `Upload failed on the server. Details: ${errorMessage}`;
+    }
+
+    return NextResponse.json({ error: 'Upload Failed', details: userFriendlyMessage }, { status: 500 });
   }
 }
