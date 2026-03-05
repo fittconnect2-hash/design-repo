@@ -1,0 +1,127 @@
+/**
+ * # Firestore Security Rules for DesignDock
+ *
+ * ## Core Philosophy
+ * This ruleset enforces a strict user-ownership security model. All data is considered private and is exclusively controlled by the user who created it. There is no concept of public data or shared access in this model; every piece of information is tied directly to an authenticated user's ID.
+ *
+ * ## Data Structure
+ * The data is organized hierarchically to reflect ownership clearly. All user-specific data, including their profile and design projects, is nested under a top-level `/users/{userId}` path, where `{userId}` is the user's unique Firebase Authentication UID. This structure makes ownership explicit and allows for efficient and secure queries.
+ *
+ * ## Key Security Decisions
+ * - **No Public Data:** All collections and documents are protected and require user authentication.
+ * - **No User Listing:** It is impossible for one user to list the profiles of other users. A user can only access their own data tree.
+ * - **Strict Ownership:** Access to any document or subcollection is granted only if the requesting user's UID matches the `{userId}` in the document path.
+ * - **Safe Defaults:** Destructive operations like deleting a root user profile are disabled by default (`allow delete: if false;`) as a safety precaution.
+ *
+ * ## Denormalization for Authorization
+ * To ensure security rules are both performant and simple, this model relies on denormalization.
+ * - The `User` document at `/users/{userId}` contains an `id` field that must match the `{userId}`.
+ * - Each `DesignProject` document at `/users/{userId}/designProjects/{designProjectId}` contains a `userId` field that must match the `{userId}` from the path.
+ * This strategy avoids the need for slow and costly `get()` or `exists()` calls in rules, as all the information needed for an authorization decision is present on the document being accessed.
+ *
+ * ## Structural Segregation
+ * By nesting `designProjects` within a user-specific path (`/users/{userId}/designProjects`), the data is naturally segregated by owner. This allows for secure `list` operations (queries) without complex server-side filtering logic in the rules, as any query against this subcollection is inherently scoped to a single user.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently signed-in user is the owner of the document,
+     * based on the provided userId from the path.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the signed-in user is the owner of an EXISTING document.
+     * CRITICAL: Used for all update and delete operations to prevent modifying
+     * or deleting documents that do not exist.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    
+    /**
+     * Validates the data for a new User document creation.
+     * Ensures the internal 'id' field matches the document's path ID.
+     */
+    function hasValidUserCreateData(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * Validates that the 'id' field of a User document is not being changed.
+     * Enforces the immutability of the ownership link.
+     */
+    function hasImmutableUserId() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates the data for a new DesignProject document creation.
+     * Ensures the internal 'userId' field matches the owner's UID.
+     */
+    function hasValidDesignProjectCreateData(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Validates that the 'userId' field of a DesignProject is not being changed.
+     * Enforces the immutability of the ownership link.
+     */
+    function hasImmutableDesignProjectOwnerId() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description Controls access to a user's own profile document.
+     * @path /users/{userId}
+     * @allow (get, update) Authenticated user reads or updates their own profile.
+     * @allow (create) New user signs up and creates their own profile document.
+     * @deny (get) Another authenticated user tries to read this profile.
+     * @deny (delete) Anyone trying to delete a user profile.
+     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidUserCreateData(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableUserId();
+      allow delete: if false; // Deleting user profiles is a sensitive operation, disabled by default.
+    }
+
+    /**
+     * @description Controls access to design projects, which are private to each user.
+     * @path /users/{userId}/designProjects/{designProjectId}
+     * @allow (create) An authenticated user creates a new project under their own profile.
+     * @allow (get, list, update, delete) An authenticated user manages their own projects.
+     * @deny (get) User 'A' tries to read a project owned by user 'B'.
+     * @deny (create) User 'A' tries to create a project under user 'B's profile.
+     * @principle Enforces strict document ownership within a user-specific subcollection.
+     */
+    match /users/{userId}/designProjects/{designProjectId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidDesignProjectCreateData(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableDesignProjectOwnerId();
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
