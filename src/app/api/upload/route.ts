@@ -4,11 +4,10 @@ import { getStorage } from 'firebase-admin/storage';
 import { firebaseConfig } from '@/firebase/config';
 
 // Initialize Firebase Admin SDK if not already initialized.
-// In a Firebase App Hosting environment, credentials are automatically provided.
+// In a Firebase App Hosting environment, this will automatically use the
+// service account associated with the backend.
 if (!getAdminApps().length) {
-  initializeApp({
-    storageBucket: firebaseConfig.storageBucket,
-  });
+  initializeApp();
 }
 
 export async function POST(request: NextRequest) {
@@ -22,7 +21,8 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const bucket = getStorage().bucket();
+    // Get a reference to the correct storage bucket
+    const bucket = getStorage().bucket(firebaseConfig.storageBucket);
     
     // Create a unique path for the file in Firebase Storage
     const filePath = `designs/${userId}/${Date.now()}_${file.name}`;
