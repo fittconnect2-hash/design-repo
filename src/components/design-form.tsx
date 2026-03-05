@@ -102,10 +102,16 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
               setUploadProgress(progress);
             },
-            (error) => reject(error),
+            (error) => {
+              reject(error); // Reject on upload error
+            },
             async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(downloadURL);
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL); // Resolve with URL on success
+              } catch (error) {
+                reject(error); // Reject if getting URL fails
+              }
             }
           );
         });
@@ -117,7 +123,37 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
 
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
+      // Success callback
+      const handleSuccess = () => {
+        const action = design ? 'updated' : 'created';
+        toast({ title: 'Success', description: `Design ${action} successfully.` });
+        
+        if (onSuccess) {
+          onSuccess();
+        } else if (!isSheet && design) {
+          router.push(`/designs/${design.id}`);
+        }
+        
+        if (!design) { // Only reset form on creation
+            form.reset();
+        }
+        router.refresh();
+        setIsSubmitting(false);
+        setUploadProgress(null);
+      };
+
+      // Error callback
+      const handleError = (error: any, operation: 'create' | 'update' | 'write', path: string, data: any) => {
+        console.error("Firestore operation failed:", error);
+        const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Submission Error', description: `Failed to ${operation} design.` });
+        setIsSubmitting(false);
+        setUploadProgress(null);
+      };
+
       if (design) {
+        // Update existing design
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
           name: values.name,
@@ -128,8 +164,11 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           tags: tagsArray,
           updatedAt: serverTimestamp(),
         };
-        await setDoc(designRef, dataToUpdate, { merge: true });
+        setDoc(designRef, dataToUpdate, { merge: true })
+          .then(handleSuccess)
+          .catch((error) => handleError(error, 'update', designRef.path, dataToUpdate));
       } else {
+        // Create new design
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
         const dataToCreate = {
           name: values.name,
@@ -142,35 +181,15 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
-        await addDoc(collectionRef, dataToCreate);
+        addDoc(collectionRef, dataToCreate)
+          .then(handleSuccess)
+          .catch((error) => handleError(error, 'create', collectionRef.path, dataToCreate));
       }
-
-      const action = design ? 'updated' : 'created';
-      toast({ title: 'Success', description: `Design ${action} successfully.` });
-      
-      if (onSuccess) {
-        onSuccess();
-      } else if (!isSheet && design) {
-        router.push(`/designs/${design.id}`);
-      }
-      
-      form.reset();
 
     } catch (error: any) {
-      console.error("Form submission error:", error);
-      const operation = design ? 'update' : 'create';
-
-      if (error.name === 'FirebaseError') {
-        const path = design
-          ? `users/${auth.currentUser.uid}/designProjects/${design.id}`
-          : `users/${auth.currentUser.uid}/designProjects`;
-        const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: values });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Submission Error', description: `Failed to ${operation} design.` });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'An unknown error occurred.' });
-      }
-    } finally {
+      // This will now mostly catch errors from the image upload.
+      console.error("Form submission process error:", error);
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'An unknown error occurred during submission.' });
       setIsSubmitting(false);
       setUploadProgress(null);
     }
@@ -242,7 +261,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 <Input 
                   type="file" 
                   accept="image/*"
-                  {...register('image')}
+                  {...form.register('image')}
                 />
               </FormControl>
               {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
