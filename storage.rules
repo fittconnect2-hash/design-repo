@@ -1,0 +1,35 @@
+rules_version = '2';
+
+/**
+ * @name Firebase Storage Security Rules
+ * @file storage.rules
+ *
+ * @description
+ * This ruleset secures the Firebase Storage bucket for the DesignDock application.
+ * It follows a strict user-ownership model, mirroring the Firestore security rules.
+ *
+ * Core Principles:
+ * 1.  **Default Deny:** All access is denied by default.
+ * 2.  **User Ownership:** Authenticated users can only read and write files within their own designated folder.
+ * 3.  **Path-Based Security:** User identity is determined by the `userId` in the file path, which must match the authenticated user's UID. This avoids complex lookups and keeps the rules fast and secure.
+ * 4.  **No Public Access:** There are no publicly readable or writable paths in this configuration.
+ */
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /**
+     * @description
+     * Secures the path for design project images. Each user gets a folder named
+     * after their UID (`userId`), and they have full read/write access ONLY
+     * within that folder.
+     *
+     * - **ALLOW read, write:** If the requesting user is authenticated (`request.auth != null`)
+     *   AND their UID (`request.auth.uid`) matches the `userId` in the path.
+     * - **DENY:** Any access by unauthenticated users.
+     * - **DENY:** User 'A' trying to access `/designs/USER_B/image.jpg`.
+     */
+    match /designs/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
