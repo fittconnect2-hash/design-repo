@@ -1,5 +1,3 @@
-'use client';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps as getAdminApps } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
@@ -55,7 +53,10 @@ export async function POST(request: NextRequest) {
     // if Firebase Storage has not been enabled in the Firebase Console.
     if (error.code === 404 && (errorMessage.includes('bucket') || errorMessage.includes('does not exist'))) {
         userFriendlyMessage = `The Firebase Storage bucket "${firebaseConfig.storageBucket}" was not found. Please go to your Firebase Console, navigate to the "Storage" section, and click "Get Started" to create the default bucket. This is a required one-time setup step.`;
-    } else {
+    } else if (error.code === 'GaxiosError' && errorMessage.includes('Could not load the default credentials')) {
+        userFriendlyMessage = 'The server is missing authentication credentials. This can happen during local development if the environment is not set up correctly.';
+    }
+    else {
         userFriendlyMessage = `Upload failed on the server. Details: ${errorMessage}`;
     }
 

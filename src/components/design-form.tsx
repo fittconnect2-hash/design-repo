@@ -91,24 +91,30 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     try {
       let finalImageUrl = existingImageUrl;
 
-      // Step 1: If a new image is provided, upload it via the backend proxy.
       if (imageFile instanceof File) {
         const formData = new FormData();
         formData.append('file', imageFile);
         formData.append('userId', uid);
 
-        setUploadProgress(50); // Simulate progress
+        setUploadProgress(50);
         
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
 
+        const contentType = response.headers.get('content-type');
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Image upload failed.');
+          let errorDetails = 'Image upload failed on the server.';
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorDetails = errorData.details || errorData.error || errorDetails;
+          } else {
+            errorDetails = 'Server returned an unexpected error. Please check server logs.';
+          }
+          throw new Error(errorDetails);
         }
-
+        
         const result = await response.json();
         finalImageUrl = result.imageUrl;
         setUploadProgress(100);
@@ -118,32 +124,24 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         throw new Error('A project image is required.');
       }
 
-      // Step 2: Save the project data (with the image URL) to Firestore.
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-      // Exclude the raw image file from the data being sent to Firestore
-      const { image, ...restOfValues } = values; 
+      const { image, ...restOfValues } = values;
+
+      const designData = {
+        ...restOfValues,
+        userId: uid,
+        imageUrl: finalImageUrl,
+        tags: tagsArray,
+        updatedAt: serverTimestamp(),
+      };
 
       if (design) {
-        // --- UPDATE LOGIC ---
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        await setDoc(designRef, {
-          ...restOfValues,
-          imageUrl: finalImageUrl,
-          tags: tagsArray,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+        await setDoc(designRef, designData, { merge: true });
         toast({ title: 'Success', description: 'Design updated successfully.' });
       } else {
-        // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        await addDoc(collectionRef, {
-          ...restOfValues,
-          userId: uid,
-          imageUrl: finalImageUrl,
-          tags: tagsArray,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        await addDoc(collectionRef, { ...designData, createdAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Design created successfully.' });
         form.reset(defaultValues);
       }
