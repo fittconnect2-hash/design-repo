@@ -26,9 +26,8 @@ import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore, useStorage } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Progress } from '@/components/ui/progress';
 
 
@@ -56,7 +55,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isSheet = view === 'sheet';
   const firestore = useFirestore();
-  const storage = useStorage();
   const auth = useAuth();
   const router = useRouter();
 
@@ -84,15 +82,43 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     }
 
     setIsSubmitting(true);
-    setUploadProgress(null);
+    setUploadProgress(0);
 
     const { uid } = auth.currentUser;
     const imageFile = values.image?.[0];
     const existingImageUrl = design?.imageUrl;
 
-    // This inner function will handle the actual database write.
-    // It is called either after a successful new image upload, or immediately if using an existing image.
-    const saveDataToFirestore = (finalImageUrl: string) => {
+    try {
+      let finalImageUrl = existingImageUrl;
+
+      // Step 1: If a new image is provided, upload it via the backend proxy.
+      if (imageFile instanceof File) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        formData.append('userId', uid);
+
+        setUploadProgress(50); // Simulate progress
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || 'Image upload failed.');
+        }
+
+        const result = await response.json();
+        finalImageUrl = result.imageUrl;
+        setUploadProgress(100);
+      }
+
+      if (!finalImageUrl) {
+        throw new Error('A project image is required.');
+      }
+
+      // Step 2: Save the project data (with the image URL) to Firestore.
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
       // Exclude the raw image file from the data being sent to Firestore
       const { image, ...restOfValues } = values; 
@@ -100,93 +126,38 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       if (design) {
         // --- UPDATE LOGIC ---
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        const dataToUpdate = {
+        await setDoc(designRef, {
           ...restOfValues,
           imageUrl: finalImageUrl,
           tags: tagsArray,
           updatedAt: serverTimestamp(),
-        };
-
-        setDoc(designRef, dataToUpdate, { merge: true })
-          .then(() => {
-            toast({ title: 'Success', description: 'Design updated successfully.' });
-            if (onSuccess) onSuccess();
-            router.refresh();
-          })
-          .catch((error) => {
-            console.error("Firestore update failed:", error);
-            toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not save changes.' });
-          })
-          .finally(() => {
-            setIsSubmitting(false);
-            setUploadProgress(null);
-          });
+        }, { merge: true });
+        toast({ title: 'Success', description: 'Design updated successfully.' });
       } else {
         // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        const dataToCreate = {
+        await addDoc(collectionRef, {
           ...restOfValues,
           userId: uid,
           imageUrl: finalImageUrl,
           tags: tagsArray,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        };
-
-        addDoc(collectionRef, dataToCreate)
-          .then(() => {
-            toast({ title: 'Success', description: 'Design created successfully.' });
-            if (onSuccess) onSuccess();
-            form.reset(defaultValues);
-            router.refresh();
-          })
-          .catch((error) => {
-            console.error("Firestore creation failed:", error);
-            toast({ variant: 'destructive', title: 'Creation Failed', description: error.message || 'Could not create project.' });
-          })
-          .finally(() => {
-            setIsSubmitting(false);
-            setUploadProgress(null);
-          });
+        });
+        toast({ title: 'Success', description: 'Design created successfully.' });
+        form.reset(defaultValues);
       }
-    };
 
-    // Step 1: Handle image upload if a new image file is present.
-    if (imageFile instanceof File) {
-      const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
-      const storageRef = ref(storage, filePath);
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+      if (onSuccess) onSuccess();
+      router.refresh();
 
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        (error) => {
-          console.error("Image upload failed:", error);
-          toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not upload image.' });
-          setIsSubmitting(false); // Stop loading on upload error
-          setUploadProgress(null);
-        },
-        () => {
-          // Upload completed successfully, now get the download URL
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            saveDataToFirestore(downloadURL); // Proceed to save data with the new URL
-          }).catch((error) => {
-            console.error("Getting download URL failed:", error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Image uploaded, but could not get public URL.' });
-            setIsSubmitting(false); // Stop loading
-            setUploadProgress(null);
-          });
-        }
-      );
-    } else if (existingImageUrl) {
-      // Step 2: No new image file, but we have an existing URL (update scenario).
-      saveDataToFirestore(existingImageUrl);
-    } else {
-      // Step 3: No new image and no existing image. This is an error.
-      toast({ variant: 'destructive', title: 'Image Required', description: 'A project image is required.' });
+    } catch (error: unknown) {
+      console.error("Submission failed:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+      toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+    } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
