@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/firebase/admin'; // Use the server-only admin module
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { getStorage as getAdminStorage } from 'firebase-admin/storage';
 import { firebaseConfig } from '@/firebase/config';
+
+// Initialize Firebase Admin SDK within the route handler file.
+// This ensures this server-only code is never bundled for the client.
+let app: App;
+if (getApps().length === 0) {
+  app = initializeApp({
+    storageBucket: firebaseConfig.storageBucket,
+  });
+} else {
+  app = getApps()[0];
+}
+const storage = getAdminStorage(app);
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,10 +48,10 @@ export async function POST(request: NextRequest) {
     let userFriendlyMessage = 'An unknown error occurred during upload.';
     const errorMessage = error.message || '';
 
-    if (error.code === 404 && (errorMessage.includes('bucket') || errorMessage.includes('does not exist'))) {
-        userFriendlyMessage = `The Firebase Storage bucket "${firebaseConfig.storageBucket}" was not found. Please go to your Firebase Console, navigate to the "Storage" section, and click "Get Started" to create the default bucket. This is a required one-time setup step.`;
-    } else if (error.code === 'GaxiosError' || (error.message && error.message.includes('Could not load the default credentials'))) {
+    if (error.code === 'GaxiosError' || (error.message && error.message.includes('Could not load the default credentials'))) {
         userFriendlyMessage = 'The server is missing authentication credentials. This can happen during local development if the environment is not set up correctly. Make sure GOOGLE_APPLICATION_CREDENTIALS is set.';
+    } else if (errorMessage.includes('does not exist')) {
+        userFriendlyMessage = `The Firebase Storage bucket "${firebaseConfig.storageBucket}" was not found. Please go to your Firebase Console, navigate to the "Storage" section, and click "Get Started" to create the default bucket. This is a required one-time setup step.`;
     }
     else {
         userFriendlyMessage = `Upload failed on the server. Details: ${errorMessage}`;
