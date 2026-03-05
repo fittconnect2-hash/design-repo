@@ -17,16 +17,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
 
 export function UserNav() {
   const { user } = useUser();
   const auth = useAuth();
-  const router = useRouter();
 
   const handleLogout = async () => {
     await signOut(auth);
-    router.push('/login');
   };
   
   const getInitials = (name: string | null | undefined) => {
