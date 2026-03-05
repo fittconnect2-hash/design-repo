@@ -60,7 +60,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const auth = useAuth();
   const router = useRouter();
 
-  const defaultValues = {
+  const defaultValues: DesignFormValues = {
     name: design?.name || '',
     description: design?.description || '',
     figmaLink: design?.figmaLink || '',
@@ -87,32 +87,37 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     setUploadProgress(null);
     const { uid } = auth.currentUser;
 
-    const stopLoadingAndShowError = (title: string, description: string) => {
+    const handleFinalSuccess = (isUpdate: boolean) => {
+      toast({ title: 'Success', description: `Design ${isUpdate ? 'updated' : 'created'} successfully.` });
+      if (onSuccess) onSuccess();
+      if (!isUpdate) {
+        form.reset(defaultValues);
+      }
+      router.refresh();
+      setIsSubmitting(false);
+      setUploadProgress(null);
+    };
+
+    const handleFinalError = (title: string, description: string) => {
       toast({ variant: 'destructive', title, description });
       setIsSubmitting(false);
       setUploadProgress(null);
+    };
+    
+    const handleWriteError = (error: any, operation: 'create' | 'update', path: string, data?: any) => {
+        console.error(`Firestore ${operation} failed:`, error);
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
+            errorEmitter.emit('permission-error', permissionError);
+            handleFinalError(`Permission Denied`, `You do not have permission to ${operation} this project.`);
+        } else {
+            handleFinalError(`${operation.charAt(0).toUpperCase() + operation.slice(1)} Failed`, `Could not save the project. Please try again.`);
+        }
     };
 
     const saveDataToFirestore = (imageUrl: string) => {
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
       const { image, ...restOfValues } = values;
-
-      const handleWriteSuccess = (isUpdate: boolean) => {
-        toast({ title: 'Success', description: `Design ${isUpdate ? 'updated' : 'created'} successfully.` });
-        if (onSuccess) onSuccess();
-        if (!isUpdate) {
-          form.reset(defaultValues);
-        }
-        router.refresh();
-        setIsSubmitting(false);
-        setUploadProgress(null);
-      };
-
-      const handleWriteError = (operation: 'create' | 'update', path: string, data: any) => {
-        const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
-        errorEmitter.emit('permission-error', permissionError);
-        stopLoadingAndShowError(`Permission Denied`, `Failed to ${operation} project.`);
-      };
 
       if (design) {
         // --- UPDATE LOGIC ---
@@ -124,8 +129,8 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           updatedAt: serverTimestamp(),
         };
         setDoc(designRef, dataToUpdate, { merge: true })
-          .then(() => handleWriteSuccess(true))
-          .catch(() => handleWriteError('update', designRef.path, dataToUpdate));
+          .then(() => handleFinalSuccess(true))
+          .catch((error) => handleWriteError(error, 'update', designRef.path, dataToUpdate));
       } else {
         // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
@@ -138,8 +143,8 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           updatedAt: serverTimestamp(),
         };
         addDoc(collectionRef, dataToCreate)
-          .then(() => handleWriteSuccess(false))
-          .catch(() => handleWriteError('create', collectionRef.path, dataToCreate));
+          .then(() => handleFinalSuccess(false))
+          .catch((error) => handleWriteError(error, 'create', collectionRef.path, dataToCreate));
       }
     };
 
@@ -156,7 +161,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         },
         (error) => {
           console.error("Image upload failed:", error);
-          stopLoadingAndShowError('Image Upload Failed', error.message || 'Could not upload image.');
+          handleFinalError('Image Upload Failed', error.message || 'Could not upload image.');
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
@@ -165,7 +170,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             })
             .catch((error) => {
               console.error("Getting download URL failed:", error);
-              stopLoadingAndShowError('Image URL Error', 'Could not get image URL after upload.');
+              handleFinalError('Image URL Error', 'Could not get image URL after upload.');
             });
         }
       );
@@ -173,7 +178,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       // If editing and no new image is provided, use the existing URL
       saveDataToFirestore(design.imageUrl);
     } else {
-      stopLoadingAndShowError('Validation Error', 'An image is required to create a new project.');
+      handleFinalError('Validation Error', 'An image is required to create a new project.');
     }
   };
 
