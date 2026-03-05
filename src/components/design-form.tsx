@@ -74,55 +74,50 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     defaultValues,
     mode: 'onChange',
   });
+  
+  const imageRef = form.register('image');
 
   const onSubmit = (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
-
+  
     setIsSubmitting(true);
     setUploadProgress(null);
     const { uid } = auth.currentUser;
-
-    const handleSuccess = (isUpdate: boolean) => {
-      const action = isUpdate ? 'updated' : 'created';
-      toast({ title: 'Success', description: `Design ${action} successfully.` });
-      
-      if (onSuccess) {
-        onSuccess();
-      }
-      
-      if (isUpdate && design) {
-        router.push(`/designs/${design.id}`);
-      }
-      
-      if (!isUpdate) { // Only reset form on creation
-          form.reset();
-      }
-      router.refresh();
+  
+    const handleGeneralFailure = (title: string, message: string) => {
+      toast({ variant: 'destructive', title, description: message });
       setIsSubmitting(false);
       setUploadProgress(null);
     };
-
-    const handleFailure = (message: string) => {
-      toast({ variant: 'destructive', title: 'Submission Error', description: message });
-      setIsSubmitting(false);
-      setUploadProgress(null);
-    };
-
-    const handlePermissionError = (error: any, operation: 'create' | 'update' | 'write', path: string, data: any) => {
-      console.error("Firestore operation failed:", error);
-      const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
-      errorEmitter.emit('permission-error', permissionError);
-      handleFailure(`Failed to ${operation} design due to permissions.`);
-    };
-
+  
     const saveDataToFirestore = (imageUrl: string) => {
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-
+  
+      const handleSuccess = (isUpdate: boolean) => {
+        const action = isUpdate ? 'updated' : 'created';
+        toast({ title: 'Success', description: `Design ${action} successfully.` });
+        if (onSuccess) onSuccess();
+        if (isUpdate && design) {
+          router.push(`/designs/${design.id}`);
+        } else {
+          form.reset();
+        }
+        router.refresh();
+        setIsSubmitting(false);
+        setUploadProgress(null);
+      };
+  
+      const handlePermissionError = (operation: 'create' | 'update' | 'write', path: string, data: any) => {
+        const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
+        errorEmitter.emit('permission-error', permissionError);
+        handleGeneralFailure(`Permission Denied`, `Failed to ${operation} design project.`);
+      };
+  
       if (design) {
-        // Update existing design
+        // --- UPDATE LOGIC ---
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
           name: values.name,
@@ -135,9 +130,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         };
         setDoc(designRef, dataToUpdate, { merge: true })
           .then(() => handleSuccess(true))
-          .catch((error) => handlePermissionError(error, 'update', designRef.path, dataToUpdate));
+          .catch(() => handlePermissionError('update', designRef.path, dataToUpdate));
       } else {
-        // Create new design
+        // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
         const dataToCreate = {
           name: values.name,
@@ -152,17 +147,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         };
         addDoc(collectionRef, dataToCreate)
           .then(() => handleSuccess(false))
-          .catch((error) => handlePermissionError(error, 'create', collectionRef.path, dataToCreate));
+          .catch(() => handlePermissionError('create', collectionRef.path, dataToCreate));
       }
     };
-
+  
+    // --- UPLOAD OR GET IMAGE URL ---
     const imageFile = values.image?.[0];
-
     if (imageFile) {
       const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
       const storageRef = ref(storage, filePath);
       const uploadTask = uploadBytesResumable(storageRef, imageFile);
-
+  
       uploadTask.on('state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -170,7 +165,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         },
         (error) => {
           console.error("Image upload failed:", error);
-          handleFailure(error.message || 'Image upload failed.');
+          handleGeneralFailure('Image Upload Failed', error.message || 'Could not upload image.');
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
@@ -179,17 +174,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             })
             .catch((error) => {
               console.error("Getting download URL failed:", error);
-              handleFailure('Could not get image URL after upload.');
+              handleGeneralFailure('Image URL Error', 'Could not get image URL after upload.');
             });
         }
       );
     } else {
       const existingImageUrl = design?.imageUrl;
-      if (!design && !existingImageUrl) {
-        handleFailure('An image is required to create a new project.');
-        return;
+      if (existingImageUrl) {
+        saveDataToFirestore(existingImageUrl);
+      } else {
+        handleGeneralFailure('Validation Error', 'An image is required to create a new project.');
       }
-      saveDataToFirestore(existingImageUrl!);
     }
   };
 
@@ -260,7 +255,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 <Input 
                   type="file" 
                   accept="image/*"
-                  {...form.register('image')}
+                  {...imageRef}
                 />
               </FormControl>
               {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
