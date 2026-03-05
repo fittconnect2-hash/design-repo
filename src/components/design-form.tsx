@@ -28,15 +28,14 @@ import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useAuth, useFirestore } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
-import { Progress } from '@/components/ui/progress';
 
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+  imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }),
   figmaLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   prototypeUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  image: z.any(),
   tags: z.string().optional(),
 });
 
@@ -52,7 +51,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const { toast } = useToast();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isSheet = view === 'sheet';
   const firestore = useFirestore();
   const auth = useAuth();
@@ -61,9 +59,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const defaultValues: DesignFormValues = {
     name: design?.name || '',
     description: design?.description || '',
+    imageUrl: design?.imageUrl || '',
     figmaLink: design?.figmaLink || '',
     prototypeUrl: design?.prototypeUrl || '',
-    image: undefined,
     tags: design?.tags?.join(', ') || '',
   };
 
@@ -73,8 +71,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
   
-  const imageField = form.register('image');
-
   const onSubmit = async (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
@@ -82,62 +78,22 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     }
 
     setIsSubmitting(true);
-    setUploadProgress(0);
 
     const { uid } = auth.currentUser;
-    const imageFile = values.image?.[0];
-    const existingImageUrl = design?.imageUrl;
 
     try {
-      let finalImageUrl = existingImageUrl;
-
-      if (imageFile instanceof File) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('userId', uid);
-
-        setUploadProgress(50);
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const contentType = response.headers.get('content-type');
-        if (!response.ok) {
-          let errorDetails = 'Image upload failed on the server.';
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
-            errorDetails = errorData.details || errorData.error || errorDetails;
-          } else {
-            errorDetails = 'Server returned an unexpected error. Please check server logs.';
-          }
-          throw new Error(errorDetails);
-        }
-        
-        const result = await response.json();
-        finalImageUrl = result.imageUrl;
-        setUploadProgress(100);
-      }
-
-      if (!finalImageUrl) {
-        throw new Error('A project image is required.');
-      }
-
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-      const { image, ...restOfValues } = values;
 
       const designData = {
-        ...restOfValues,
+        ...values,
         userId: uid,
-        imageUrl: finalImageUrl,
         tags: tagsArray,
         updatedAt: serverTimestamp(),
       };
 
       if (design) {
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        await setDoc(designRef, designData, { merge: true });
+        await setDoc(designRef, { ...designData, createdAt: design.createdAt || serverTimestamp() }, { merge: true });
         toast({ title: 'Success', description: 'Design updated successfully.' });
       } else {
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
@@ -155,7 +111,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(null);
     }
   };
 
@@ -190,6 +145,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   };
   
   const tagsValue = form.watch('tags');
+  const imageUrlValue = form.watch('imageUrl');
   
   const formContent = (
       <Form {...form}>
@@ -220,26 +176,27 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 </FormItem>
               )}
             />
-            <FormItem>
-              <FormLabel>Project Image</FormLabel>
-              <FormControl>
-                <Input 
-                  type="file" 
-                  accept="image/*"
-                  {...imageField}
-                />
-              </FormControl>
-              {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
-              {!form.watch('image')?.[0] && design?.imageUrl && (
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/your-image.png" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {imageUrlValue && form.getFieldState('imageUrl').invalid === false && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-sm text-muted-foreground">Current Image:</p>
+                  <FormLabel>Image Preview</FormLabel>
                   <div className="relative aspect-video w-full rounded-md overflow-hidden border">
-                    <Image src={design.imageUrl} alt="Current project image" fill className="object-cover" />
+                    <Image src={imageUrlValue} alt="Project image preview" fill className="object-cover" />
                   </div>
                 </div>
               )}
-              <FormMessage>{form.formState.errors.image?.message as React.ReactNode}</FormMessage>
-            </FormItem>
              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <FormLabel>Tags</FormLabel>
