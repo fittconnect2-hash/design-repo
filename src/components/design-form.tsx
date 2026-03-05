@@ -77,48 +77,59 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   
   const imageField = form.register('image');
 
-  const onSubmit = (values: DesignFormValues) => {
+  const onSubmit = async (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
-
+    
     setIsSubmitting(true);
     setUploadProgress(null);
-    const { uid } = auth.currentUser;
 
-    const handleFinalSuccess = (isUpdate: boolean) => {
-      toast({ title: 'Success', description: `Design ${isUpdate ? 'updated' : 'created'} successfully.` });
-      if (onSuccess) onSuccess();
-      if (!isUpdate) {
-        form.reset(defaultValues);
+    try {
+      const { uid } = auth.currentUser;
+      const imageFile = values.image?.[0];
+      let imageUrl = design?.imageUrl; // Default to existing image URL if updating
+
+      // 1. Handle image upload if a new image is provided
+      if (imageFile instanceof File) {
+        const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
+        const storageRef = ref(storage, filePath);
+        const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+        // Await the upload completion
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+            },
+            (error) => {
+              console.error("Image upload failed:", error);
+              reject(new Error(error.message || 'Could not upload image.'));
+            },
+            async () => {
+              try {
+                imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve();
+              } catch (error) {
+                console.error("Getting download URL failed:", error);
+                reject(new Error('Could not get image URL after upload.'));
+              }
+            }
+          );
+        });
       }
-      router.refresh();
-      setIsSubmitting(false);
-      setUploadProgress(null);
-    };
 
-    const handleFinalError = (title: string, description: string) => {
-      toast({ variant: 'destructive', title, description });
-      setIsSubmitting(false);
-      setUploadProgress(null);
-    };
-    
-    const handleWriteError = (error: any, operation: 'create' | 'update', path: string, data?: any) => {
-        console.error(`Firestore ${operation} failed:`, error);
-        if (error.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
-            errorEmitter.emit('permission-error', permissionError);
-            handleFinalError(`Permission Denied`, `You do not have permission to ${operation} this project.`);
-        } else {
-            handleFinalError(`${operation.charAt(0).toUpperCase() + operation.slice(1)} Failed`, `Could not save the project. Please try again.`);
-        }
-    };
+      if (!imageUrl) {
+        throw new Error('An image is required to create or update a project.');
+      }
 
-    const saveDataToFirestore = (imageUrl: string) => {
+      // 2. Prepare data for Firestore
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-      const { image, ...restOfValues } = values;
+      const { image, ...restOfValues } = values; // Exclude the raw image file from Firestore data
 
+      // 3. Save data to Firestore
       if (design) {
         // --- UPDATE LOGIC ---
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
@@ -128,9 +139,11 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           tags: tagsArray,
           updatedAt: serverTimestamp(),
         };
-        setDoc(designRef, dataToUpdate, { merge: true })
-          .then(() => handleFinalSuccess(true))
-          .catch((error) => handleWriteError(error, 'update', designRef.path, dataToUpdate));
+        await setDoc(designRef, dataToUpdate, { merge: true });
+        toast({ title: 'Success', description: `Design updated successfully.` });
+        if (onSuccess) onSuccess();
+        router.refresh();
+
       } else {
         // --- CREATE LOGIC ---
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
@@ -142,43 +155,30 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
-        addDoc(collectionRef, dataToCreate)
-          .then(() => handleFinalSuccess(false))
-          .catch((error) => handleWriteError(error, 'create', collectionRef.path, dataToCreate));
+        await addDoc(collectionRef, dataToCreate);
+        toast({ title: 'Success', description: `Design created successfully.` });
+        if (onSuccess) onSuccess();
+        form.reset(defaultValues); // Reset form only on creation
+        router.refresh();
       }
-    };
 
-    const imageFile = values.image?.[0];
-    if (imageFile instanceof File) {
-      const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
-      const storageRef = ref(storage, filePath);
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
-
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        (error) => {
-          console.error("Image upload failed:", error);
-          handleFinalError('Image Upload Failed', error.message || 'Could not upload image.');
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref)
-            .then((downloadURL) => {
-              saveDataToFirestore(downloadURL);
-            })
-            .catch((error) => {
-              console.error("Getting download URL failed:", error);
-              handleFinalError('Image URL Error', 'Could not get image URL after upload.');
-            });
-        }
-      );
-    } else if (design?.imageUrl) {
-      // If editing and no new image is provided, use the existing URL
-      saveDataToFirestore(design.imageUrl);
-    } else {
-      handleFinalError('Validation Error', 'An image is required to create a new project.');
+    } catch (error: any) {
+      console.error("Submission failed:", error);
+      let errorMessage = error.message || 'An unknown error occurred.';
+      if (error.code === 'permission-denied') {
+          errorMessage = 'You do not have permission to perform this action.';
+          const permissionError = new FirestorePermissionError({
+            path: 'unknown', // We may not know the exact path here, but can provide context
+            operation: design ? 'update' : 'create',
+            requestResourceData: values,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      }
+      toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+    } finally {
+      // 4. ALWAYS stop the loading state
+      setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
