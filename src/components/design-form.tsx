@@ -99,23 +99,25 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         };
         await setDoc(designRef, dataToUpdate, { merge: true });
         toast({ title: 'Success', description: 'Design updated successfully.' });
+        if (onSuccess) onSuccess();
+        router.refresh();
       } else {
         // Create new design
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
         const newDocRef = doc(collectionRef); // Creates a ref with a new auto-generated ID
         const dataToCreate = {
           ...baseData,
-          // The ID is now handled by Firestore and the data hooks, no need to save it in the document
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
         await setDoc(newDocRef, dataToCreate);
         toast({ title: 'Success', description: 'Design created successfully.' });
-        form.reset(defaultValues);
-      }
 
-      if (onSuccess) onSuccess();
-      router.refresh();
+        if (onSuccess) onSuccess(); // Close sheet if open
+
+        // Navigate directly to the new design's page
+        router.push(`/designs/${newDocRef.id}`);
+      }
 
     } catch (error: unknown) {
       console.error("Submission failed:", error);
