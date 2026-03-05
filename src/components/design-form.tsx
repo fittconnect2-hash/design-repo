@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useAuth, useFirestore } from '@/firebase';
-import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 
 
 const formSchema = z.object({
@@ -84,20 +84,32 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     try {
       const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-      const designData = {
+      const baseData = {
         ...values,
         userId: uid,
         tags: tagsArray,
-        updatedAt: serverTimestamp(),
       };
 
       if (design) {
+        // Update existing design
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        await setDoc(designRef, { ...designData, createdAt: design.createdAt || serverTimestamp() }, { merge: true });
+        const dataToUpdate = {
+          ...baseData,
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(designRef, dataToUpdate, { merge: true });
         toast({ title: 'Success', description: 'Design updated successfully.' });
       } else {
+        // Create new design
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        await addDoc(collectionRef, { ...designData, createdAt: serverTimestamp() });
+        const newDocRef = doc(collectionRef); // Creates a ref with a new auto-generated ID
+        const dataToCreate = {
+          ...baseData,
+          id: newDocRef.id, // Store the document ID within the document
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(newDocRef, dataToCreate);
         toast({ title: 'Success', description: 'Design created successfully.' });
         form.reset(defaultValues);
       }
