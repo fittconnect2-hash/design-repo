@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -146,6 +146,41 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   
   const tagsValue = form.watch('tags');
   const imageUrlValue = form.watch('imageUrl');
+
+  const imagePreview = useMemo(() => {
+    if (!imageUrlValue || form.getFieldState('imageUrl').invalid) {
+      return null;
+    }
+
+    const allowedHosts = [
+      'images.unsplash.com',
+      'picsum.photos',
+      'firebasestorage.googleapis.com',
+      'i.imgur.com',
+      'placehold.co',
+    ];
+
+    try {
+      const url = new URL(imageUrlValue);
+      if (allowedHosts.includes(url.hostname)) {
+        return (
+          <div className="relative aspect-video w-full rounded-md overflow-hidden border">
+            <Image src={imageUrlValue} alt="Project image preview" fill className="object-cover" />
+          </div>
+        );
+      }
+      return (
+        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+          <p className="font-semibold">Cannot show preview for this URL.</p>
+          <p className="text-destructive/80 mt-1">The image host is not supported for previews. Please use a direct image link (e.g., ending in .png or .jpg). For sites like prnt.sc, right-click the image and select "Copy Image Address".</p>
+        </div>
+      );
+    } catch (e) {
+      // Invalid URL format, let Zod handle the message
+      return null;
+    }
+  }, [imageUrlValue, form]);
+
   
   const formContent = (
       <Form {...form}>
@@ -192,9 +227,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             {imageUrlValue && form.getFieldState('imageUrl').invalid === false && (
                 <div className="mt-4 space-y-2">
                   <FormLabel>Image Preview</FormLabel>
-                  <div className="relative aspect-video w-full rounded-md overflow-hidden border">
-                    <Image src={imageUrlValue} alt="Project image preview" fill className="object-cover" />
-                  </div>
+                  {imagePreview}
                 </div>
               )}
              <div className="space-y-2">
