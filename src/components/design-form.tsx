@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -51,7 +51,6 @@ interface DesignFormProps {
 
 export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps) {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -76,108 +75,104 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
 
+  const { register } = form;
+
   const onSubmit = async (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
-    
+
     setIsSubmitting(true);
+    setUploadProgress(null);
 
-    const { uid } = auth.currentUser;
-    const imageFile = values.image?.[0];
-    let imageUrl = design?.imageUrl;
+    try {
+      const { uid } = auth.currentUser;
+      const imageFile = values.image?.[0];
+      let imageUrl = design?.imageUrl;
 
-    if (imageFile) {
-      const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
-      const storageRef = ref(storage, filePath);
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+      if (imageFile) {
+        const filePath = `designs/${uid}/${Date.now()}_${imageFile.name}`;
+        const storageRef = ref(storage, filePath);
+        const uploadTask = uploadBytesResumable(storageRef, imageFile);
 
-      try {
         imageUrl = await new Promise<string>((resolve, reject) => {
           uploadTask.on('state_changed',
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
               setUploadProgress(progress);
             },
-            (error) => {
-              console.error("Upload failed", error);
-              toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the image. Please try again.' });
-              reject(error);
-            },
+            (error) => reject(error),
             async () => {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               resolve(downloadURL);
             }
           );
         });
-      } catch (error) {
-        setIsSubmitting(false);
-        setUploadProgress(null);
-        return;
       }
-    }
 
-    setUploadProgress(null);
+      if (!imageUrl) {
+        throw new Error('An image is required for the project.');
+      }
 
-    if (!imageUrl) {
-        toast({ variant: 'destructive', title: 'Error', description: 'An image is required for the project.' });
-        setIsSubmitting(false);
-        return;
-    }
+      const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+      if (design) {
+        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+        const dataToUpdate = {
+          name: values.name,
+          description: values.description,
+          figmaLink: values.figmaLink,
+          prototypeUrl: values.prototypeUrl,
+          imageUrl,
+          tags: tagsArray,
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(designRef, dataToUpdate, { merge: true });
+      } else {
+        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+        const dataToCreate = {
+          name: values.name,
+          description: values.description,
+          figmaLink: values.figmaLink,
+          prototypeUrl: values.prototypeUrl,
+          userId: uid,
+          imageUrl,
+          tags: tagsArray,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await addDoc(collectionRef, dataToCreate);
+      }
 
-    const handleSuccess = () => {
       const action = design ? 'updated' : 'created';
       toast({ title: 'Success', description: `Design ${action} successfully.` });
-      if (onSuccess) onSuccess();
-      else if (!isSheet && design) router.push(`/designs/${design.id}`);
+      
+      if (onSuccess) {
+        onSuccess();
+      } else if (!isSheet && design) {
+        router.push(`/designs/${design.id}`);
+      }
       
       form.reset();
-      setIsSubmitting(false);
-    }
-    
-    const handleError = (path: string, operation: 'create' | 'update', data: any) => {
-      const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
-      errorEmitter.emit('permission-error', permissionError);
-      toast({ variant: 'destructive', title: 'Error', description: `Failed to ${operation} design.` });
-      setIsSubmitting(false);
-    }
-    
-    if (design) {
-      const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-      const dataToUpdate = {
-        name: values.name,
-        description: values.description,
-        figmaLink: values.figmaLink,
-        prototypeUrl: values.prototypeUrl,
-        imageUrl,
-        tags: tagsArray,
-        updatedAt: serverTimestamp(),
-      };
-      
-      setDoc(designRef, dataToUpdate, { merge: true })
-        .then(handleSuccess)
-        .catch(() => handleError(designRef.path, 'update', dataToUpdate));
 
-    } else {
-      const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-      const dataToCreate = {
-        name: values.name,
-        description: values.description,
-        figmaLink: values.figmaLink,
-        prototypeUrl: values.prototypeUrl,
-        userId: uid,
-        imageUrl,
-        tags: tagsArray,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+    } catch (error: any) {
+      console.error("Form submission error:", error);
+      const operation = design ? 'update' : 'create';
 
-      addDoc(collectionRef, dataToCreate)
-        .then(handleSuccess)
-        .catch(() => handleError(collectionRef.path, 'create', dataToCreate));
+      if (error.name === 'FirebaseError') {
+        const path = design
+          ? `users/${auth.currentUser.uid}/designProjects/${design.id}`
+          : `users/${auth.currentUser.uid}/designProjects`;
+        const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: values });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Submission Error', description: `Failed to ${operation} design.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'An unknown error occurred.' });
+      }
+    } finally {
+      setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -241,35 +236,26 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field: { onChange, onBlur, name, ref } }) => (
-                <FormItem>
-                  <FormLabel>Project Image</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="file" 
-                      accept="image/*"
-                      ref={ref}
-                      name={name}
-                      onBlur={onBlur}
-                      onChange={(e) => onChange(e.target.files)}
-                    />
-                  </FormControl>
-                  {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
-                  {!form.watch('image')?.[0] && design?.imageUrl && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-sm text-muted-foreground">Current Image:</p>
-                      <div className="relative aspect-video w-full rounded-md overflow-hidden border">
-                        <Image src={design.imageUrl} alt="Current project image" fill className="object-cover" />
-                      </div>
-                    </div>
-                  )}
-                  <FormMessage />
-                </FormItem>
+            <FormItem>
+              <FormLabel>Project Image</FormLabel>
+              <FormControl>
+                <Input 
+                  type="file" 
+                  accept="image/*"
+                  {...register('image')}
+                />
+              </FormControl>
+              {uploadProgress !== null && <Progress value={uploadProgress} className="mt-2" />}
+              {!form.watch('image')?.[0] && design?.imageUrl && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">Current Image:</p>
+                  <div className="relative aspect-video w-full rounded-md overflow-hidden border">
+                    <Image src={design.imageUrl} alt="Current project image" fill className="object-cover" />
+                  </div>
+                </div>
               )}
-            />
+              <FormMessage>{form.formState.errors.image?.message as React.ReactNode}</FormMessage>
+            </FormItem>
              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <FormLabel>Tags</FormLabel>
@@ -286,7 +272,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                     control={form.control}
                     name="tags"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0">
                             <FormControl>
                                 <Input placeholder="e.g., UI, UX, Mobile" {...field} />
                             </FormControl>
