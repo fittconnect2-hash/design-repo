@@ -98,8 +98,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       setDoc(designRef, dataToUpdate, { merge: true })
         .then(() => {
           toast({ title: 'Success', description: 'Design updated successfully.' });
-          if (onSuccess) onSuccess();
-          router.refresh();
+          router.push(`/designs/${design.id}`);
         })
         .catch((error: unknown) => {
           console.error("Update failed:", error);
@@ -127,7 +126,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           if (onSuccess) {
             onSuccess();
           }
-          router.push(`/designs/${newDocRef.id}`);
         })
         .catch((error: unknown) => {
           console.error("Submission failed:", error);
