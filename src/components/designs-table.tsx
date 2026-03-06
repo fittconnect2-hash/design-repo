@@ -46,6 +46,8 @@ interface DesignsTableProps {
 export function DesignsTable({ designs }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -67,9 +69,18 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     });
   };
 
-  const handleDelete = async () => {
-    if (designToDelete && auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', designToDelete.id);
+  const handleDeleteConfirm = () => {
+    if (designToDelete) {
+      handleDelete(designToDelete);
+    }
+    // Close modal
+    setIsDeleteModalOpen(false);
+    setDesignToDelete(null);
+  };
+
+  const handleDelete = async (design: Design & { id: string }) => {
+    if (auth.currentUser) {
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', design.id);
       
       deleteDoc(designRef)
         .then(() => {
@@ -91,7 +102,16 @@ export function DesignsTable({ designs }: DesignsTableProps) {
           });
         });
     }
-    setDesignToDelete(null);
+  };
+
+  const handleOpenViewModal = (design: Design & { id: string }) => {
+    setDesignToView(design);
+    setIsViewModalOpen(true);
+  };
+  
+  const handleOpenDeleteModal = (design: Design & { id: string }) => {
+    setDesignToDelete(design);
+    setIsDeleteModalOpen(true);
   };
 
   return (
@@ -142,7 +162,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onSelect={() => setDesignToView(design)}
+                          onSelect={() => handleOpenViewModal(design)}
                           className="flex cursor-pointer items-center"
                         >
                           <Eye className="mr-2 h-4 w-4" />
@@ -162,7 +182,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={() => setDesignToDelete(design)}
+                          onSelect={() => handleOpenDeleteModal(design)}
                           className="cursor-pointer text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -185,80 +205,84 @@ export function DesignsTable({ designs }: DesignsTableProps) {
       </div>
 
       {/* View Modal */}
-      <Dialog open={!!designToView} onOpenChange={(open) => { if (!open) setDesignToView(null); }}>
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
         <DialogContent className="sm:max-w-3xl p-0">
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="text-2xl font-headline font-bold">{designToView?.name}</DialogTitle>
-            <DialogDescription className="text-base text-foreground/80 pt-4">{designToView?.description}</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[calc(100vh-10rem)]">
-            <div className="px-6 pb-6 space-y-6">
-                <div className="relative aspect-video w-full">
-                  <Image
-                    src={designToView?.imageUrl || `https://picsum.photos/seed/${designToView?.id}/600/400`}
-                    alt={designToView?.name || 'Project Image'}
-                    fill
-                    className="object-cover rounded-md border"
-                    data-ai-hint="project hero"
-                    priority
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {designToView?.tags?.map((tag, index) => (
-                    <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                  ))}
-                </div>
-                
-                <Separator />
+          {designToView && (
+            <>
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
+                <DialogDescription className="text-base text-foreground/80 pt-4">{designToView.description}</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-10rem)]">
+                <div className="px-6 pb-6 space-y-6">
+                    <div className="relative aspect-video w-full">
+                      <Image
+                        src={designToView.imageUrl}
+                        alt={designToView.name}
+                        fill
+                        className="object-cover rounded-md border"
+                        data-ai-hint="project hero"
+                        priority
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {designToView.tags?.map((tag, index) => (
+                        <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                      ))}
+                    </div>
+                    
+                    <Separator />
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <a href={designToView?.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                        <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
-                                <Figma className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.figmaLink}</div>
-                            </CardContent>
-                        </Card>
-                    </a>
-                    <a href={designToView?.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                        <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
-                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.prototypeUrl}</div>
-                            </CardContent>
-                        </Card>
-                    </a>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                            <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
+                                    <Figma className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
+                                </CardContent>
+                            </Card>
+                        </a>
+                        <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                            <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
+                                </CardContent>
+                            </Card>
+                        </a>
+                    </div>
                 </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="p-6 pt-0">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
+              </ScrollArea>
+              <DialogFooter className="p-6 pt-0">
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <Dialog open={!!designToDelete} onOpenChange={(open) => { if (!open) setDesignToDelete(null); }}>
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete this design project.
+              This action cannot be undone. This will permanently delete the project &quot;{designToDelete?.name}&quot;.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDesignToDelete(null)}>Cancel</Button>
-            <Button onClick={handleDelete} variant="destructive">
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleDeleteConfirm} variant="destructive">
               Delete
             </Button>
           </DialogFooter>
