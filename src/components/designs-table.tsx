@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MoreHorizontal, Edit, Trash2, Eye, Share2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink } from 'lucide-react';
 
 import type { Design } from '@/lib/definitions';
 import {
@@ -30,12 +30,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
-
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
@@ -43,7 +51,8 @@ interface DesignsTableProps {
 
 export function DesignsTable({ designs }: DesignsTableProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [selectedDesignId, setSelectedDesignId] = React.useState<string | null>(null);
+  const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
+  const [selectedDesign, setSelectedDesign] = React.useState<(Design & { id: string }) | null>(null);
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -66,8 +75,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   };
 
   const handleDelete = async () => {
-    if (selectedDesignId && auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', selectedDesignId);
+    if (selectedDesign && auth.currentUser) {
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', selectedDesign.id);
       
       deleteDoc(designRef)
         .then(() => {
@@ -90,8 +99,23 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         });
     }
     setDeleteDialogOpen(false);
-    setSelectedDesignId(null);
+    setSelectedDesign(null);
   };
+
+  const handleViewClick = (design: Design & { id: string }) => {
+    setSelectedDesign(design);
+    setViewDialogOpen(true);
+  };
+
+  const handleDeleteClick = (design: Design & { id: string }) => {
+    setSelectedDesign(design);
+    setDeleteDialogOpen(true);
+  }
+
+  const onDialogClose = () => {
+    // When either dialog closes, reset the selected design
+    setSelectedDesign(null);
+  }
 
   return (
     <>
@@ -140,11 +164,9 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                           <Link href={`/designs/${design.id}`} className="flex cursor-pointer items-center">
+                        <DropdownMenuItem onSelect={() => handleViewClick(design)} className="flex cursor-pointer items-center">
                             <Eye className="mr-2 h-4 w-4" />
                             View
-                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={() => handleShare(design.id)}
@@ -160,10 +182,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={() => {
-                            setSelectedDesignId(design.id);
-                            setDeleteDialogOpen(true);
-                          }}
+                          onSelect={() => handleDeleteClick(design)}
                           className="cursor-pointer text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -185,7 +204,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </Table>
       </div>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) onDialogClose(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -201,6 +220,64 @@ export function DesignsTable({ designs }: DesignsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={isViewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) onDialogClose(); }}>
+        <DialogContent className="max-w-4xl p-0">
+            {selectedDesign && (
+              <>
+              <ScrollArea className="max-h-[90vh]">
+                <div className="relative aspect-video w-full">
+                  <Image
+                    src={selectedDesign.imageUrl}
+                    alt={selectedDesign.name}
+                    fill
+                    className="object-cover"
+                    data-ai-hint="project hero"
+                  />
+                </div>
+                <div className="p-6">
+                  <DialogHeader>
+                    <DialogTitle className="text-3xl font-headline font-bold">{selectedDesign.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="my-4 flex flex-wrap gap-2">
+                    {selectedDesign.tags.map((tag, index) => (
+                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
+                  <p className="text-base text-foreground/80">{selectedDesign.description}</p>
+                  
+                  <Separator className="my-6" />
+
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <a href={selectedDesign.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                  <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
+                                  <Figma className="h-4 w-4 text-muted-foreground" />
+                              </CardHeader>
+                              <CardContent>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{selectedDesign.figmaLink}</div>
+                              </CardContent>
+                          </Card>
+                      </a>
+                      <a href={selectedDesign.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                  <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                              </CardHeader>
+                              <CardContent>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{selectedDesign.prototypeUrl}</div>
+                              </CardContent>
+                          </Card>
+                      </a>
+                  </div>
+                </div>
+              </ScrollArea>
+              </>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
