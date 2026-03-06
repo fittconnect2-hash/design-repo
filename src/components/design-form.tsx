@@ -125,7 +125,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         .then(() => {
           toast({ title: 'Success', description: 'Design created successfully.' });
           if (onSuccess) onSuccess();
-          router.push(`/designs/${newDocRef.id}`);
         })
         .catch((error: unknown) => {
           console.error("Submission failed:", error);
