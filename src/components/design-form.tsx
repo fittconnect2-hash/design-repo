@@ -73,7 +73,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
   
-  const onSubmit = (values: DesignFormValues) => {
+  const onSubmit = async (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
@@ -84,64 +84,47 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     const { uid } = auth.currentUser;
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-    // This object does not contain an 'id' field, as it is not part of the form schema.
     const baseData = {
       ...values,
       userId: uid,
       tags: tagsArray,
     };
 
-    if (design) {
-      // Update existing design
-      const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-      const dataToUpdate = {
-        ...baseData,
-        updatedAt: serverTimestamp(),
-      };
-      setDoc(designRef, dataToUpdate, { merge: true })
-        .then(() => {
-          toast({ title: 'Success', description: 'Design updated successfully.' });
-          router.push(`/designs/${design.id}`);
-        })
-        .catch((error: unknown) => {
-          console.error("Update failed:", error);
-          const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
-          toast({ variant: 'destructive', title: 'Update Failed', description: errorMessage });
-        })
-        .finally(() => {
-          setIsSubmitting(false);
-        });
+    try {
+        if (design) {
+            // Update existing design
+            const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+            const dataToUpdate = {
+                ...baseData,
+                updatedAt: serverTimestamp(),
+            };
+            await setDoc(designRef, dataToUpdate, { merge: true });
+            toast({ title: 'Success', description: 'Design updated successfully.' });
+            router.push(`/designs/${design.id}`);
+        } else {
+            // Create new design
+            const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+            const newDocRef = doc(collectionRef); // Firestore generates the ID
+            const dataToCreate = {
+                ...baseData,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            };
 
-    } else {
-      // Create new design
-      const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-      const newDocRef = doc(collectionRef); // Firestore generates the ID
-      const dataToCreate = {
-        ...baseData,
-        // CRITICAL FIX: Do NOT store the 'id' field within the document data.
-        // The document's ID is its unique identifier.
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      setDoc(newDocRef, dataToCreate)
-        .then(() => {
-          toast({ title: 'Success', description: 'Design created successfully.' });
-          // Navigate to the new project's detail page.
-          router.push(`/designs/${newDocRef.id}`);
-        })
-        .catch((error: unknown) => {
-          console.error("Submission failed:", error);
-          const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
-          toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-        })
-        .finally(() => {
-          setIsSubmitting(false);
-          // Close sheet if it's a sheet view after navigation is triggered
-          if (onSuccess) {
-            onSuccess();
-          }
-        });
+            await setDoc(newDocRef, dataToCreate);
+            toast({ title: 'Success', description: 'Design created successfully. It will appear in your project list.' });
+            
+            // This is the fix: close the sheet, do not navigate.
+            if (onSuccess) {
+                onSuccess();
+            }
+        }
+    } catch (error: unknown) {
+        console.error("Operation failed:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+        toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
