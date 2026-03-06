@@ -38,7 +38,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 
 
 interface DesignsTableProps {
-  designs: Design[];
+  designs: (Design & { id: string })[];
 }
 
 export function DesignsTable({ designs }: DesignsTableProps) {

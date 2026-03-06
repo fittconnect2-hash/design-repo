@@ -1,5 +1,4 @@
 export type Design = {
-  id: string;
   userId: string;
   name: string;
   description: string;

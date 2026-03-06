@@ -41,8 +41,10 @@ const formSchema = z.object({
 
 type DesignFormValues = z.infer<typeof formSchema>;
 
+// The Design type from definitions does not have an ID.
+// The design object passed as a prop will have the ID from the useDoc hook.
 interface DesignFormProps {
-  design?: Design;
+  design?: Design & { id: string };
   view?: 'page' | 'sheet';
   onSuccess?: () => void;
 }
@@ -82,6 +84,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     const { uid } = auth.currentUser;
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
+    // This object does not contain an 'id' field, as it is not part of the form schema.
     const baseData = {
       ...values,
       userId: uid,
@@ -112,10 +115,11 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     } else {
       // Create new design
       const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-      const newDocRef = doc(collectionRef);
+      const newDocRef = doc(collectionRef); // Firestore generates the ID
       const dataToCreate = {
         ...baseData,
-        id: newDocRef.id,
+        // CRITICAL FIX: Do NOT store the 'id' field within the document data.
+        // The document's ID is its unique identifier.
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -123,9 +127,8 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       setDoc(newDocRef, dataToCreate)
         .then(() => {
           toast({ title: 'Success', description: 'Design created successfully.' });
-          if (onSuccess) {
-            onSuccess();
-          }
+          // Navigate to the new project's detail page.
+          router.push(`/designs/${newDocRef.id}`);
         })
         .catch((error: unknown) => {
           console.error("Submission failed:", error);
@@ -134,6 +137,10 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         })
         .finally(() => {
           setIsSubmitting(false);
+          // Close sheet if it's a sheet view after navigation is triggered
+          if (onSuccess) {
+            onSuccess();
+          }
         });
     }
   };
