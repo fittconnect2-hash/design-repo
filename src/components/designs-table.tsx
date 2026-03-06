@@ -45,7 +45,7 @@ import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@
 import { doc, deleteDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface DesignsTableProps {
