@@ -204,59 +204,61 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Dialog key={designToView?.id || 'dialog-closed'} open={!!designToView} onOpenChange={(open) => { if (!open) setDesignToView(null); }}>
-        <DialogContent className="max-w-4xl p-0">
-            <ScrollArea className="max-h-[90vh]">
-              <div className="relative aspect-video w-full">
-                <Image
-                  src={designToView?.imageUrl ?? `https://picsum.photos/seed/placeholder/600/400`}
-                  alt={designToView?.name ?? 'Project Image'}
-                  fill
-                  className="object-cover"
-                  data-ai-hint="project hero"
-                />
-              </div>
-              <div className="p-6">
-                <DialogHeader>
-                  <DialogTitle className="text-3xl font-headline font-bold">{designToView?.name}</DialogTitle>
-                </DialogHeader>
-                <div className="my-4 flex flex-wrap gap-2">
-                  {designToView?.tags?.map((tag, index) => (
-                    <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                  ))}
+      {designToView && (
+        <Dialog open={true} onOpenChange={() => setDesignToView(null)}>
+          <DialogContent className="max-w-4xl p-0">
+              <ScrollArea className="max-h-[90vh]">
+                <div className="relative aspect-video w-full">
+                  <Image
+                    src={designToView.imageUrl}
+                    alt={designToView.name}
+                    fill
+                    className="object-cover"
+                    data-ai-hint="project hero"
+                  />
                 </div>
-                <p className="text-base text-foreground/80">{designToView?.description}</p>
-                
-                <Separator className="my-6" />
+                <div className="p-6">
+                  <DialogHeader>
+                    <DialogTitle className="text-3xl font-headline font-bold">{designToView.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="my-4 flex flex-wrap gap-2">
+                    {designToView.tags.map((tag, index) => (
+                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
+                  <p className="text-base text-foreground/80">{designToView.description}</p>
+                  
+                  <Separator className="my-6" />
 
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <a href={designToView?.figmaLink ?? '#'} target="_blank" rel="noopener noreferrer" className="group">
-                        <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
-                                <Figma className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.figmaLink}</div>
-                            </CardContent>
-                        </Card>
-                    </a>
-                    <a href={designToView?.prototypeUrl ?? '#'} target="_blank" rel="noopener noreferrer" className="group">
-                        <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
-                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.prototypeUrl}</div>
-                            </CardContent>
-                        </Card>
-                    </a>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <a href={designToView.figmaLink || '#'} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                  <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
+                                  <Figma className="h-4 w-4 text-muted-foreground" />
+                              </CardHeader>
+                              <CardContent>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
+                              </CardContent>
+                          </Card>
+                      </a>
+                      <a href={designToView.prototypeUrl || '#'} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                  <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                              </CardHeader>
+                              <CardContent>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
+                              </CardContent>
+                          </Card>
+                      </a>
+                  </div>
                 </div>
-              </div>
-            </ScrollArea>
-        </DialogContent>
-      </Dialog>
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
