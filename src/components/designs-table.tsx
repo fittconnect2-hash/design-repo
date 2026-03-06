@@ -187,62 +187,66 @@ export function DesignsTable({ designs }: DesignsTableProps) {
       {/* View Modal */}
       <Dialog open={!!designToView} onOpenChange={(open) => { if (!open) setDesignToView(null); }}>
         <DialogContent className="sm:max-w-3xl p-0">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle className="text-2xl font-headline font-bold">{designToView?.name}</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[calc(100vh-10rem)]">
-              <div className="px-6 pb-6 space-y-6">
-                  <div className="relative aspect-video w-full">
-                    <Image
-                      src={designToView?.imageUrl ?? ''}
-                      alt={designToView?.name ?? ''}
-                      fill
-                      className="object-cover rounded-md border"
-                      data-ai-hint="project hero"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {designToView?.tags.map((tag, index) => (
-                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-                  <p className="text-base text-foreground/80">{designToView?.description}</p>
-                  
-                  <Separator />
+          {designToView && (
+            <>
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-10rem)]">
+                <div className="px-6 pb-6 space-y-6">
+                    <div className="relative aspect-video w-full">
+                      <Image
+                        src={designToView.imageUrl || `https://picsum.photos/seed/${designToView.id}/600/400`}
+                        alt={designToView.name || 'Project Image'}
+                        fill
+                        className="object-cover rounded-md border"
+                        data-ai-hint="project hero"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {designToView.tags.map((tag, index) => (
+                        <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                      ))}
+                    </div>
+                    <p className="text-base text-foreground/80">{designToView.description}</p>
+                    
+                    <Separator />
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <a href={designToView?.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                  <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
-                                  <Figma className="h-4 w-4 text-muted-foreground" />
-                              </CardHeader>
-                              <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.figmaLink}</div>
-                              </CardContent>
-                          </Card>
-                      </a>
-                      <a href={designToView?.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                  <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
-                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                              </CardHeader>
-                              <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView?.prototypeUrl}</div>
-                              </CardContent>
-                          </Card>
-                      </a>
-                  </div>
-              </div>
-            </ScrollArea>
-            <DialogFooter className="p-6 pt-0">
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Close
-                </Button>
-              </DialogClose>
-            </DialogFooter>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                            <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
+                                    <Figma className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
+                                </CardContent>
+                            </Card>
+                        </a>
+                        <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                            <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
+                                </CardContent>
+                            </Card>
+                        </a>
+                    </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="p-6 pt-0">
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
