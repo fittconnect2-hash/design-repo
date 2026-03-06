@@ -4,16 +4,17 @@ import { DesignsTable } from '@/components/designs-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddDesignButton } from '@/components/add-design-button';
 import { UserNav } from '@/components/user-nav';
-import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Design } from '@/lib/definitions';
+import { useMemo } from 'react';
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const designsQuery = useMemoFirebase(() => {
+  const designsQuery = useMemo(() => {
     if (!user) return null;
     const collRef = collection(firestore, 'users', user.uid, 'designProjects');
     // Order projects by creation date, descending

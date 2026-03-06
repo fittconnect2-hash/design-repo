@@ -5,10 +5,11 @@ import { notFound, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
 function EditDesignSkeleton() {
   return (
@@ -40,7 +41,7 @@ export default function EditDesignPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const designRef = useMemoFirebase(() => {
+  const designRef = useMemo(() => {
     if (!user || !params.id) return null;
     return doc(firestore, 'users', user.uid, 'designProjects', params.id);
   }, [firestore, user, params.id]);
