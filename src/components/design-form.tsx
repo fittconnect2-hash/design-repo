@@ -71,7 +71,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     mode: 'onChange',
   });
   
-  const onSubmit = async (values: DesignFormValues) => {
+  const onSubmit = (values: DesignFormValues) => {
     if (!auth.currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
@@ -80,51 +80,61 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     setIsSubmitting(true);
 
     const { uid } = auth.currentUser;
+    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-    try {
-      const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+    const baseData = {
+      ...values,
+      userId: uid,
+      tags: tagsArray,
+    };
 
-      const baseData = {
-        ...values,
-        userId: uid,
-        tags: tagsArray,
+    if (design) {
+      // Update existing design
+      const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+      const dataToUpdate = {
+        ...baseData,
+        updatedAt: serverTimestamp(),
+      };
+      setDoc(designRef, dataToUpdate, { merge: true })
+        .then(() => {
+          toast({ title: 'Success', description: 'Design updated successfully.' });
+          if (onSuccess) onSuccess();
+          router.refresh();
+        })
+        .catch((error: unknown) => {
+          console.error("Update failed:", error);
+          const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+          toast({ variant: 'destructive', title: 'Update Failed', description: errorMessage });
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
+
+    } else {
+      // Create new design
+      const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+      const newDocRef = doc(collectionRef);
+      const dataToCreate = {
+        ...baseData,
+        id: newDocRef.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
-      if (design) {
-        // Update existing design
-        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-        const dataToUpdate = {
-          ...baseData,
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(designRef, dataToUpdate, { merge: true });
-        toast({ title: 'Success', description: 'Design updated successfully.' });
-        if (onSuccess) onSuccess();
-        router.refresh();
-      } else {
-        // Create new design
-        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        const newDocRef = doc(collectionRef); // Creates a ref with a new auto-generated ID
-        const dataToCreate = {
-          ...baseData,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(newDocRef, dataToCreate);
-        toast({ title: 'Success', description: 'Design created successfully.' });
-
-        if (onSuccess) onSuccess(); // Close sheet if open
-
-        // Navigate directly to the new design's page
-        router.push(`/designs/${newDocRef.id}`);
-      }
-
-    } catch (error: unknown) {
-      console.error("Submission failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
-      toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
-    } finally {
-      setIsSubmitting(false);
+      setDoc(newDocRef, dataToCreate)
+        .then(() => {
+          toast({ title: 'Success', description: 'Design created successfully.' });
+          if (onSuccess) onSuccess();
+          router.push(`/designs/${newDocRef.id}`);
+        })
+        .catch((error: unknown) => {
+          console.error("Submission failed:", error);
+          const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+          toast({ variant: 'destructive', title: 'Submission Failed', description: errorMessage });
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
     }
   };
 
