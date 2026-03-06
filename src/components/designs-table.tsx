@@ -204,7 +204,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Dialog open={!!designToView} onOpenChange={(open) => { if (!open) setDesignToView(null); }}>
+      <Dialog key={designToView?.id || 'dialog-closed'} open={!!designToView} onOpenChange={(open) => { if (!open) setDesignToView(null); }}>
         <DialogContent className="max-w-4xl p-0">
             <ScrollArea className="max-h-[90vh]">
               <div className="relative aspect-video w-full">
