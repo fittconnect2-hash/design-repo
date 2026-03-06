@@ -41,8 +41,6 @@ const formSchema = z.object({
 
 type DesignFormValues = z.infer<typeof formSchema>;
 
-// The Design type from definitions does not have an ID.
-// The design object passed as a prop will have the ID from the useDoc hook.
 interface DesignFormProps {
   design?: Design & { id: string };
   view?: 'page' | 'sheet';
@@ -91,40 +89,39 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     };
 
     try {
-        if (design) {
-            // Update existing design
-            const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
-            const dataToUpdate = {
-                ...baseData,
-                updatedAt: serverTimestamp(),
-            };
-            await setDoc(designRef, dataToUpdate, { merge: true });
-            toast({ title: 'Success', description: 'Design updated successfully.' });
-            router.push(`/designs/${design.id}`);
-        } else {
-            // Create new design
-            const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-            const newDocRef = doc(collectionRef); // Firestore generates the ID
-            const dataToCreate = {
-                ...baseData,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            };
+      if (design) {
+        // Update existing design
+        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+        const dataToUpdate = {
+          ...baseData,
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(designRef, dataToUpdate, { merge: true });
+        toast({ title: 'Success', description: 'Design updated successfully. Refreshing...' });
+        
+        // Hard navigate to the detail page to ensure fresh data
+        window.location.assign(`/designs/${design.id}`);
+      } else {
+        // Create new design
+        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
+        const newDocRef = doc(collectionRef); // Firestore generates the ID
+        const dataToCreate = {
+          ...baseData,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
 
-            await setDoc(newDocRef, dataToCreate);
-            toast({ title: 'Success', description: 'Design created successfully. It will appear in your project list.' });
-            
-            // This is the fix: close the sheet, do not navigate.
-            if (onSuccess) {
-                onSuccess();
-            }
-        }
+        await setDoc(newDocRef, dataToCreate);
+        toast({ title: 'Success', description: 'Design created. Refreshing project list...' });
+        
+        // Hard refresh the current page to ensure the list is up-to-date
+        window.location.reload();
+      }
     } catch (error: unknown) {
-        console.error("Operation failed:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
-        toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
-    } finally {
-        setIsSubmitting(false);
+      console.error("Operation failed:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+      toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
+      setIsSubmitting(false); // Only re-enable form on error
     }
   };
 

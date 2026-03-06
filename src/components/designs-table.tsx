@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Share2 } from 'lucide-react';
 
 import type { Design } from '@/lib/definitions';
 import {
@@ -30,20 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
@@ -51,7 +42,6 @@ interface DesignsTableProps {
 
 export function DesignsTable({ designs }: DesignsTableProps) {
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
-  const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -147,9 +137,11 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setDesignToView(design)} className="flex cursor-pointer items-center">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/designs/${design.id}`} className="flex cursor-pointer items-center">
                             <Eye className="mr-2 h-4 w-4" />
                             View
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={() => handleShare(design.id)}
@@ -203,62 +195,6 @@ export function DesignsTable({ designs }: DesignsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {designToView && (
-        <Dialog open={true} onOpenChange={() => setDesignToView(null)}>
-          <DialogContent className="max-w-4xl p-0">
-              <ScrollArea className="max-h-[90vh]">
-                <div className="relative aspect-video w-full">
-                  <Image
-                    src={designToView.imageUrl}
-                    alt={designToView.name}
-                    fill
-                    className="object-cover"
-                    data-ai-hint="project hero"
-                  />
-                </div>
-                <div className="p-6">
-                  <DialogHeader>
-                    <DialogTitle className="text-3xl font-headline font-bold">{designToView.name}</DialogTitle>
-                  </DialogHeader>
-                  <div className="my-4 flex flex-wrap gap-2">
-                    {designToView.tags.map((tag, index) => (
-                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-                  <p className="text-base text-foreground/80">{designToView.description}</p>
-                  
-                  <Separator className="my-6" />
-
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <a href={designToView.figmaLink || '#'} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                  <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
-                                  <Figma className="h-4 w-4 text-muted-foreground" />
-                              </CardHeader>
-                              <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
-                              </CardContent>
-                          </Card>
-                      </a>
-                      <a href={designToView.prototypeUrl || '#'} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                  <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
-                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                              </CardHeader>
-                              <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
-                              </CardContent>
-                          </Card>
-                      </a>
-                  </div>
-                </div>
-              </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }
