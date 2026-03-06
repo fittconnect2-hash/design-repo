@@ -50,9 +50,8 @@ interface DesignsTableProps {
 }
 
 export function DesignsTable({ designs }: DesignsTableProps) {
-  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [isViewDialogOpen, setViewDialogOpen] = React.useState(false);
-  const [selectedDesign, setSelectedDesign] = React.useState<(Design & { id: string }) | null>(null);
+  const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
+  const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -75,8 +74,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   };
 
   const handleDelete = async () => {
-    if (selectedDesign && auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', selectedDesign.id);
+    if (designToDelete && auth.currentUser) {
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', designToDelete.id);
       
       deleteDoc(designRef)
         .then(() => {
@@ -98,24 +97,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
           });
         });
     }
-    setDeleteDialogOpen(false);
-    setSelectedDesign(null);
+    setDesignToDelete(null);
   };
-
-  const handleViewClick = (design: Design & { id: string }) => {
-    setSelectedDesign(design);
-    setViewDialogOpen(true);
-  };
-
-  const handleDeleteClick = (design: Design & { id: string }) => {
-    setSelectedDesign(design);
-    setDeleteDialogOpen(true);
-  }
-
-  const onDialogClose = () => {
-    // When either dialog closes, reset the selected design
-    setSelectedDesign(null);
-  }
 
   return (
     <>
@@ -164,7 +147,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleViewClick(design)} className="flex cursor-pointer items-center">
+                        <DropdownMenuItem onSelect={() => setDesignToView(design)} className="flex cursor-pointer items-center">
                             <Eye className="mr-2 h-4 w-4" />
                             View
                         </DropdownMenuItem>
@@ -182,7 +165,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={() => handleDeleteClick(design)}
+                          onSelect={() => setDesignToDelete(design)}
                           className="cursor-pointer text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -204,7 +187,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </Table>
       </div>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) onDialogClose(); }}>
+      <AlertDialog open={!!designToDelete} onOpenChange={(open) => !open && setDesignToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -221,15 +204,15 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Dialog open={isViewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) onDialogClose(); }}>
+      <Dialog open={!!designToView} onOpenChange={(open) => !open && setDesignToView(null)}>
         <DialogContent className="max-w-4xl p-0">
-            {selectedDesign && (
+            {designToView && (
               <>
               <ScrollArea className="max-h-[90vh]">
                 <div className="relative aspect-video w-full">
                   <Image
-                    src={selectedDesign.imageUrl}
-                    alt={selectedDesign.name}
+                    src={designToView.imageUrl}
+                    alt={designToView.name}
                     fill
                     className="object-cover"
                     data-ai-hint="project hero"
@@ -237,37 +220,37 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                 </div>
                 <div className="p-6">
                   <DialogHeader>
-                    <DialogTitle className="text-3xl font-headline font-bold">{selectedDesign.name}</DialogTitle>
+                    <DialogTitle className="text-3xl font-headline font-bold">{designToView.name}</DialogTitle>
                   </DialogHeader>
                   <div className="my-4 flex flex-wrap gap-2">
-                    {selectedDesign.tags.map((tag, index) => (
+                    {designToView.tags.map((tag, index) => (
                       <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
                     ))}
                   </div>
-                  <p className="text-base text-foreground/80">{selectedDesign.description}</p>
+                  <p className="text-base text-foreground/80">{designToView.description}</p>
                   
                   <Separator className="my-6" />
 
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <a href={selectedDesign.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                      <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
                           <Card className="h-full transition-all hover:border-primary hover:shadow-md">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                   <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
                                   <Figma className="h-4 w-4 text-muted-foreground" />
                               </CardHeader>
                               <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{selectedDesign.figmaLink}</div>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
                               </CardContent>
                           </Card>
                       </a>
-                      <a href={selectedDesign.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                      <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
                           <Card className="h-full transition-all hover:border-primary hover:shadow-md">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                   <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
                                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                               </CardHeader>
                               <CardContent>
-                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{selectedDesign.prototypeUrl}</div>
+                                  <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
                               </CardContent>
                           </Card>
                       </a>
