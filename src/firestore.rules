@@ -122,8 +122,10 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // Any signed-in user can read, create, update, and delete tasks to foster collaboration.
-      allow read, write: if isSignedIn();
+      // Admins can read/write any task. Staff designers can only read tasks assigned to them.
+      // All signed-in users can create, update, and delete tasks to foster collaboration.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.assignedToId == request.auth.uid);
+      allow write: if isSignedIn();
     }
 
     match /auditLogs/{auditLogId} {

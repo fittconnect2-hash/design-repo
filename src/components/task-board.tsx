@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, orderBy, query, doc, setDoc, serverTimestamp, where } from 'firebase/firestore';
 import { PlusCircle, Loader2, User, Share2 } from 'lucide-react';
 
 import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
@@ -150,9 +150,17 @@ export function TaskBoard() {
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<UserProfile>(userProfileRef);
 
   const tasksQuery = useMemo(() => {
+    if (!user || isLoadingCurrentUserProfile || !currentUserProfile) return null;
+
     const collRef = collection(firestore, 'tasks');
-    return query(collRef, orderBy('createdAt', 'desc'));
-  }, [firestore]);
+
+    if (currentUserProfile.role === 'Admin') {
+      return query(collRef, orderBy('createdAt', 'desc'));
+    } else {
+      return query(collRef, where('assignedToId', '==', user.uid));
+    }
+  }, [firestore, user, currentUserProfile, isLoadingCurrentUserProfile]);
+
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
 
@@ -176,7 +184,14 @@ export function TaskBoard() {
 
   useEffect(() => {
     if (fetchedTasks) {
-        setTasks(fetchedTasks);
+        const sortedTasks = [...fetchedTasks].sort((a, b) => {
+            const timeA = a.createdAt?.toDate().getTime() || 0;
+            const timeB = b.createdAt?.toDate().getTime() || 0;
+            return timeB - timeA;
+        });
+        setTasks(sortedTasks);
+    } else {
+      setTasks([]);
     }
   }, [fetchedTasks]);
 
