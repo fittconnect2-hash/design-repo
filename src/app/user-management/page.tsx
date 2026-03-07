@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import type { UserProfile } from '@/lib/definitions';
+import type { UserProfile, Invite } from '@/lib/definitions';
 import { UsersTable } from '@/components/users-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,20 +36,55 @@ export default function UserManagementPage() {
 
   const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  // An admin is someone with the 'Admin' role or the designated super admin email.
   const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
   const isAdmin = userProfile?.role === 'Admin' || isSuperAdminByEmail;
 
   const usersQuery = useMemo(() => {
-    // Only create the query if the user is an admin.
     if (!user || !isAdmin) return null;
     const collRef = collection(firestore, 'users');
     return query(collRef, orderBy('createdAt', 'desc'));
   }, [firestore, user, isAdmin]);
 
-  const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile & { id: string }>(usersQuery);
+  const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile & { id: string }>(usersQuery);
 
-  const isLoading = isUserLoading || isUserProfileLoading || (isAdmin && isLoadingUsers);
+  const invitesQuery = useMemo(() => {
+    if (!user || !isAdmin) return null;
+    const collRef = collection(firestore, 'invites');
+    return query(collRef, orderBy('createdAt', 'desc'));
+  }, [firestore, user, isAdmin]);
+
+  const { data: invites, isLoading: isLoadingInvites, error: invitesError } = useCollection<Invite & { id: string }>(invitesQuery);
+
+  const isLoading = isUserLoading || isUserProfileLoading || (isAdmin && (isLoadingUsers || isLoadingInvites));
+  const error = usersError || invitesError;
+
+  const managedUsers = useMemo(() => {
+    if (!users && !invites) return [];
+
+    const activeUsers = (users || []).map(u => ({
+      ...u,
+      status: 'Active' as const
+    }));
+
+    const pendingUsers = (invites || []).map(i => ({
+      id: i.id,
+      displayName: i.email,
+      email: i.email,
+      role: i.role,
+      createdAt: i.createdAt,
+      status: 'Pending' as const,
+    }));
+    
+    const combined = [...activeUsers, ...pendingUsers];
+
+    combined.sort((a, b) => {
+        const dateA = a.createdAt?.toDate()?.getTime() || 0;
+        const dateB = b.createdAt?.toDate()?.getTime() || 0;
+        return dateB - dateA;
+    });
+
+    return combined;
+  }, [users, invites]);
   
   if (isLoading) {
     return <UserManagementSkeleton />;
@@ -77,7 +112,7 @@ export default function UserManagementPage() {
     );
   }
 
-  const hasUsers = users && users.length > 0;
+  const hasUsersOrInvites = managedUsers && managedUsers.length > 0;
 
   return (
     <>
@@ -93,9 +128,9 @@ export default function UserManagementPage() {
           </Button>
         </div>
 
-        {hasUsers ? (
+        {hasUsersOrInvites ? (
           <Card>
-            <UsersTable users={users || []} />
+            <UsersTable users={managedUsers || []} />
           </Card>
         ) : (
           <Card className="flex flex-col items-center justify-center py-20">

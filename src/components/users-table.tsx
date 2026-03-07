@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Send, Copy, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
 import type { UserProfile } from '@/lib/definitions';
@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -27,6 +28,16 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -43,16 +54,27 @@ import { UserForm } from './user-form';
 import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
+type ManagedUser = {
+  id: string;
+  displayName: string;
+  email: string;
+  role: 'Admin' | 'Staff Designer';
+  createdAt?: any;
+  status: 'Active' | 'Pending';
+};
+
 interface UsersTableProps {
-  users: (UserProfile & { id: string })[];
+  users: ManagedUser[];
 }
 
 export function UsersTable({ users }: UsersTableProps) {
-  const [userToEdit, setUserToEdit] = React.useState<(UserProfile & { id: string }) | null>(null);
-  const [userToDelete, setUserToDelete] = React.useState<(UserProfile & { id: string }) | null>(null);
+  const [userToEdit, setUserToEdit] = React.useState<ManagedUser | null>(null);
+  const [userToDelete, setUserToDelete] = React.useState<ManagedUser | null>(null);
+  const [inviteToRevoke, setInviteToRevoke] = React.useState<ManagedUser | null>(null);
 
   const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isRevokeModalOpen, setIsRevokeModalOpen] = React.useState(false);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -61,15 +83,59 @@ export function UsersTable({ users }: UsersTableProps) {
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
-    if (names.length > 1) {
+    if (names.length > 1 && names[1]) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
     return name[0].toUpperCase();
   };
 
+  const handleCopyInviteLink = (inviteId: string) => {
+    const origin = window.location.origin;
+    const link = `${origin}/signup?invite=${inviteId}`;
+    navigator.clipboard.writeText(link).then(() => {
+        toast({ title: 'Success', description: 'Invite link copied to clipboard.' });
+    });
+  };
+
+  const handleResendInvite = (email: string, inviteId: string) => {
+    const origin = window.location.origin;
+    const link = `${origin}/signup?invite=${inviteId}`;
+    const subject = encodeURIComponent("Reminder: You're invited to join DesignDock");
+    const body = encodeURIComponent(
+      `Hello,\n\nThis is a reminder about your invitation to join our team on DesignDock.\n\nPlease use the following link to sign up:\n${link}\n\nWe're looking forward to collaborating with you!\n\nBest,\nThe DesignDock Team`
+    );
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+
+  const handleRevokeConfirm = () => {
+     if (inviteToRevoke && auth.currentUser) {
+        const inviteRef = doc(firestore, 'invites', inviteToRevoke.id);
+        deleteDoc(inviteRef)
+            .then(() => {
+                toast({
+                    title: 'Success',
+                    description: `Invitation for ${inviteToRevoke.email} has been revoked.`,
+                });
+                handleRevokeModalOpenChange(false);
+            })
+            .catch(() => {
+                 const permissionError = new FirestorePermissionError({
+                    path: inviteRef.path,
+                    operation: 'delete',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                 toast({
+                    variant: 'destructive',
+                    title: 'Permission Error',
+                    description: 'Failed to revoke invitation.',
+                });
+            });
+     }
+  };
+
+
   const handleDeleteConfirm = () => {
     if (userToDelete && auth.currentUser) {
-      // Admins cannot delete their own account from the user management page.
       if (userToDelete.id === auth.currentUser.uid) {
         toast({
           variant: 'destructive',
@@ -105,29 +171,36 @@ export function UsersTable({ users }: UsersTableProps) {
     }
   };
 
-  const handleOpenEditSheet = (user: UserProfile & { id: string }) => {
+  const handleOpenEditSheet = (user: ManagedUser) => {
     setUserToEdit(user);
     setIsEditSheetOpen(true);
   };
   
-  const handleOpenDeleteModal = (user: UserProfile & { id: string }) => {
+  const handleOpenDeleteModal = (user: ManagedUser) => {
     setUserToDelete(user);
     setIsDeleteModalOpen(true);
   };
 
+  const handleOpenRevokeModal = (user: ManagedUser) => {
+    setInviteToRevoke(user);
+    setIsRevokeModalOpen(true);
+  };
+
   const handleEditSheetOpenChange = (isOpen: boolean) => {
     setIsEditSheetOpen(isOpen);
-    if (!isOpen) {
-      setUserToEdit(null);
-    }
+    if (!isOpen) setUserToEdit(null);
   };
   
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
-    if (!isOpen) {
-      setUserToDelete(null);
-    }
+    if (!isOpen) setUserToDelete(null);
   };
+  
+  const handleRevokeModalOpenChange = (isOpen: boolean) => {
+    setIsRevokeModalOpen(isOpen);
+    if (!isOpen) setInviteToRevoke(null);
+  };
+
 
   return (
     <>
@@ -136,9 +209,9 @@ export function UsersTable({ users }: UsersTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead className="hidden md:table-cell">Role</TableHead>
-              <TableHead className="hidden lg:table-cell">Created At</TableHead>
+              <TableHead className="hidden md:table-cell">Status</TableHead>
+              <TableHead className="hidden lg:table-cell">Date Added</TableHead>
               <TableHead className="text-right w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -153,14 +226,20 @@ export function UsersTable({ users }: UsersTableProps) {
                         <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className='font-medium'>{user.displayName || 'No Name'}</span>
+                        <span className={`font-medium ${user.status === 'Pending' ? 'italic text-muted-foreground' : ''}`}>
+                          {user.displayName || 'No Name'}
+                        </span>
                         <span className='text-xs text-muted-foreground md:hidden'>{user.email}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{user.email}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     <Badge variant={user.role === 'Admin' ? 'default' : 'secondary'}>{user.role}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                     <Badge variant={user.status === 'Active' ? 'outline' : 'destructive'} className={user.status === 'Active' ? 'border-green-500 text-green-600' : ''}>
+                        {user.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {user.createdAt ? format(user.createdAt.toDate(), 'PP') : 'N/A'}
@@ -174,20 +253,41 @@ export function UsersTable({ users }: UsersTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() => handleOpenEditSheet(user)}
-                          className="flex cursor-pointer items-center"
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => handleOpenDeleteModal(user)}
-                          className="cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {user.status === 'Active' ? (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenEditSheet(user)}
+                              className="flex cursor-pointer items-center"
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit User
+                            </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenDeleteModal(user)}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuItem onSelect={() => handleResendInvite(user.email, user.id)} className="cursor-pointer">
+                                <Send className="mr-2 h-4 w-4" />
+                                Resend Invite
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleCopyInviteLink(user.id)} className="cursor-pointer">
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                                Copy Link
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => handleOpenRevokeModal(user)} className="cursor-pointer text-destructive focus:text-destructive">
+                                <AlertTriangle className="mr-2 h-4 w-4" />
+                                Revoke Invite
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -196,7 +296,7 @@ export function UsersTable({ users }: UsersTableProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  No users found.
+                  No users or invitations found.
                 </TableCell>
               </TableRow>
             )}
@@ -216,7 +316,7 @@ export function UsersTable({ users }: UsersTableProps) {
             <div className="px-6 pb-6">
               {userToEdit && (
                 <UserForm
-                  user={userToEdit}
+                  user={userToEdit as UserProfile & { id: string }}
                   onSuccess={() => handleEditSheetOpenChange(false)}
                 />
               )}
@@ -241,6 +341,23 @@ export function UsersTable({ users }: UsersTableProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isRevokeModalOpen} onOpenChange={handleRevokeModalOpenChange}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This will permanently revoke the invitation for &quot;{inviteToRevoke?.email}&quot;. They will not be able to sign up with this link.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleRevokeConfirm} className="bg-destructive hover:bg-destructive/90">
+                    Revoke
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

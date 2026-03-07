@@ -112,16 +112,14 @@ service cloud.firestore {
     }
 
     match /invites/{inviteId} {
-      // Admins can create invites.
-      allow create: if isAdmin();
+      // Admins can create and list invites.
+      allow create, list: if isAdmin();
       // Anyone can read an invite if they have the ID (for the signup page).
       allow get: if true;
-      // No one can list all invites.
-      allow list: if false;
       // No one can update an invite.
       allow update: if false;
-      // A signed-in user can delete the invite they just used.
-      allow delete: if isSignedIn();
+      // An admin can delete an invite, or a signed-in user can delete the invite they just used.
+      allow delete: if isAdmin() || isSignedIn();
     }
   }
 }
