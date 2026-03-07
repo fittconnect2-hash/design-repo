@@ -27,12 +27,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { DesignForm } from './design-form';
 import { ScrollArea } from './ui/scroll-area';
+import { TaskForm } from './task-form';
 
 type TaskStatus = 'Todo' | 'In Progress' | 'Done';
 
 const COLUMNS: TaskStatus[] = ['Todo', 'In Progress', 'Done'];
 
-function TaskCard({ task, onTaskClick }: { task: Task & { id: string }, onTaskClick: (task: Task & { id: string }) => void }) {
+function TaskCard({ task, onTaskClick, onTaskDoubleClick }: { task: Task & { id: string }, onTaskClick: (task: Task & { id: string }) => void, onTaskDoubleClick: (task: Task & { id: string }) => void }) {
     const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('taskId', task.id);
         e.stopPropagation();
@@ -43,6 +44,7 @@ function TaskCard({ task, onTaskClick }: { task: Task & { id: string }, onTaskCl
             draggable
             onDragStart={onDragStart}
             onClick={() => onTaskClick(task)}
+            onDoubleClick={() => onTaskDoubleClick(task)}
             className="mb-4 p-4 cursor-grab active:cursor-grabbing hover:bg-accent transition-colors"
         >
             <p className="font-semibold">{task.title}</p>
@@ -77,6 +79,8 @@ export function TaskBoard() {
   const [selectedTask, setSelectedTask] = useState<(Task & { id: string }) | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isAddDesignSheetOpen, setIsAddDesignSheetOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<(Task & { id: string }) | null>(null);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
   const tasksQuery = useMemo(() => {
     const collRef = collection(firestore, 'tasks');
@@ -110,6 +114,11 @@ export function TaskBoard() {
   const handleTaskClick = (task: Task & { id: string }) => {
     setSelectedTask(task);
     setIsDetailsDialogOpen(true);
+  };
+  
+  const handleTaskDoubleClick = (task: Task & { id: string }) => {
+    setTaskToEdit(task);
+    setIsEditSheetOpen(true);
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>, status: TaskStatus) => {
@@ -153,7 +162,7 @@ export function TaskBoard() {
                   </CardHeader>
                   <CardContent className="space-y-4 min-h-[200px]">
                       {tasksByColumn[status] && tasksByColumn[status].map(task => (
-                          <TaskCard key={task.id} task={task} onTaskClick={handleTaskClick} />
+                          <TaskCard key={task.id} task={task} onTaskClick={handleTaskClick} onTaskDoubleClick={handleTaskDoubleClick} />
                       ))}
                   </CardContent>
               </Card>
@@ -207,6 +216,28 @@ export function TaskBoard() {
               </div>
             </ScrollArea>
           </SheetContent>
+      </Sheet>
+
+      <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+        <SheetContent className="p-0 sm:max-w-md">
+          <SheetHeader className="p-6 pb-4">
+            <SheetTitle>Edit Task</SheetTitle>
+            <SheetDescription>
+              Make changes to your task here. Click save when you're done.
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-6.5rem)]">
+            <div className="px-6 pb-6">
+              {taskToEdit && (
+                <TaskForm
+                  task={taskToEdit}
+                  view="sheet"
+                  onSuccess={() => setIsEditSheetOpen(false)}
+                />
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
       </Sheet>
     </>
   );
