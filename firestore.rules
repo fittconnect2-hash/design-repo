@@ -3,7 +3,9 @@
  *
  * ## Core Philosophy
  * This ruleset enforces a strict user-ownership security model for writes,
- * while allowing public read access for sharing purposes on designs.
+ * while allowing public read access for sharing purposes on designs. It also
+ * defines an 'Admin' role with elevated privileges, including a hardcoded
+ * Super Admin.
  *
  * ## Data Structure
  * The data is organized hierarchically. All user-specific data is nested under
@@ -11,11 +13,12 @@
  * This structure makes ownership explicit.
  *
  * ## Key Security Decisions
+ * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
+ * - **Admin Role:** Users with `role == 'Admin'` in their profile can manage users, projects, and designs.
  * - **Public Read for Designs:** The `designs` subcollection is publicly readable (`get`, `list`)
  *   to support the public sharing feature. A design is only gettable if `isPublic` is true.
- * - **Private Projects:** The `projects` subcollection is private. Only the owner can read or write.
- * - **No User Listing:** It is impossible for one user to list the profiles of other users.
- * - **Strict Write Ownership:** All write operations (`create`, `update`, `delete`) are granted
+ * - **Private Projects:** The `projects` subcollection is private. Only the owner or an admin can read or write.
+ * - **Strict Write Ownership for regular users:** All write operations (`create`, `update`, `delete`) are granted
  *   only if the requesting user's UID matches the `{userId}` in the document path.
  */
 rules_version = '2';
@@ -54,9 +57,18 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.email == 'fittconnect2@gmail.com';
+    }
+
     function isAdmin() {
-      // Check if the user has an 'Admin' role in their user document.
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // An admin is someone with the 'Admin' role in their user document OR the super admin.
+      return isSuperAdmin() || (
+        isSignedIn() &&
+        exists(userDocPath) &&
+        get(userDocPath).data.role == 'Admin'
+      );
     }
 
     // ----------------------------------------------------------------------
@@ -73,30 +85,30 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to high-level projects. Read and write are private.
+     * @description Controls access to high-level projects. Read and write are private to owners, but open to admins.
      * @path /users/{userId}/projects/{projectId}
      */
     match /users/{userId}/projects/{projectId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && hasValidOwnerId(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
-      allow delete: if isExistingOwner(userId);
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create: if (isOwner(userId) && hasValidOwnerId(userId)) || isAdmin();
+      allow update: if (isExistingOwner(userId) && hasImmutableOwnerId()) || isAdmin();
+      allow delete: if isExistingOwner(userId) || isAdmin();
     }
 
     /**
-     * @description Controls access to designs. Read is public, writes are private.
+     * @description Controls access to designs. Read is public, writes are private to owners, but open to admins.
      * @path /users/{userId}/designs/{designId}
      */
     match /users/{userId}/designs/{designId} {
-      // Anyone can read a design if it's public. Owners can read their own private designs.
-      allow get: if resource.data.isPublic == true || isOwner(userId);
+      // Anyone can read a design if it's public. Owners and Admins can read private designs.
+      allow get: if resource.data.isPublic == true || isOwner(userId) || isAdmin();
       // Public listing is allowed. The client query MUST filter for isPublic == true.
       allow list: if true;
       
-      // Writes are restricted to owners.
-      allow create: if isOwner(userId) && hasValidOwnerId(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
-      allow delete: if isExistingOwner(userId);
+      // Writes are restricted to owners or admins.
+      allow create: if (isOwner(userId) && hasValidOwnerId(userId)) || isAdmin();
+      allow update: if (isExistingOwner(userId) && hasImmutableOwnerId()) || isAdmin();
+      allow delete: if isExistingOwner(userId) || isAdmin();
     }
   }
 }
