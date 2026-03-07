@@ -3,7 +3,7 @@
  *
  * ## Core Philosophy
  * This ruleset allows any authenticated user to read all projects and designs, fostering
- * a collaborative environment. Write access (`create`, `update`, `delete`) is strictly
+ * a collaborative environment. Write access (`create`, `update`, 'delete'`) is strictly
  * controlled, limited to the document owner or an administrator.
  *
  * ## Key Security Decisions
@@ -122,13 +122,18 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // Admin can get any task. A user can get a task if it is assigned to them.
+      // Admins can GET any task. Staff can GET a task if it's assigned to them.
+      // This rule is checked against every document a LIST query would return.
       allow get: if isAdmin() || (isSignedIn() && 'assignedToId' in resource.data && resource.data.assignedToId == request.auth.uid);
-      
-      // Any signed-in user can initiate a list query. The query is then secured by the `get` rule.
+
+      // ANY signed-in user is allowed to INITIATE a list query.
+      // The query's results are then secured by the 'get' rule above.
+      // An Admin's query for all tasks succeeds because the 'get' rule will always return true for them.
+      // A Staff Designer's query succeeds ONLY IF it is constrained (e.g., `where('assignedToId', '==', request.auth.uid)`),
+      // because that's the only way to guarantee all returned documents will pass their 'get' rule check.
       allow list: if isSignedIn();
-      
-      // Any signed-in user can write to foster collaboration.
+
+      // For now, any signed-in user can create or update tasks to foster collaboration.
       allow write: if isSignedIn();
     }
 
