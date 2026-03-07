@@ -277,7 +277,12 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
               name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Image URL</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Image URL</FormLabel>
+                    <Link href="https://uploadimgur.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
+                      Upload to Imgur
+                    </Link>
+                  </div>
                   <FormControl>
                     <Input placeholder="https://example.com/your-image.png" {...field} />
                   </FormControl>
