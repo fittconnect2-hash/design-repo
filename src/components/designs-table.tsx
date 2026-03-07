@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -37,6 +36,14 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { DesignForm } from './design-form';
 
 
 interface DesignsTableProps {
@@ -45,13 +52,23 @@ interface DesignsTableProps {
 
 export function DesignsTable({ designs }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
+  const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
+  const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
 
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
+
+  React.useEffect(() => {
+    if (!isViewModalOpen && !isDeleteModalOpen) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [isViewModalOpen, isDeleteModalOpen]);
 
   const handleShare = (designId: string) => {
     const url = `${window.location.origin}/designs/${designId}`;
@@ -108,6 +125,11 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     setDesignToView(design);
     setIsViewModalOpen(true);
   };
+
+  const handleOpenEditSheet = (design: Design & { id: string }) => {
+    setDesignToEdit(design);
+    setIsEditSheetOpen(true);
+  };
   
   const handleOpenDeleteModal = (design: Design & { id: string }) => {
     setDesignToDelete(design);
@@ -117,21 +139,20 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleViewModalOpenChange = (isOpen: boolean) => {
     setIsViewModalOpen(isOpen);
     if (!isOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
-      setTimeout(() => {
-        setDesignToView(null);
-      }, 150);
+      setDesignToView(null);
+    }
+  };
+
+  const handleEditSheetOpenChange = (isOpen: boolean) => {
+    setIsEditSheetOpen(isOpen);
+    if (!isOpen) {
+      setDesignToEdit(null);
     }
   };
   
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
       setDesignToDelete(null);
     }
   };
@@ -201,11 +222,12 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                           <Share2 className="mr-2 h-4 w-4" />
                           Share
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/designs/${design.id}/edit`} className="flex cursor-pointer items-center">
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
+                        <DropdownMenuItem
+                          onSelect={() => handleOpenEditSheet(design)}
+                          className="flex cursor-pointer items-center"
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={() => handleOpenDeleteModal(design)}
@@ -302,8 +324,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                 </div>
               </ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t">
-                  <Button type="button" variant="secondary" asChild>
-                    <Link href={`/designs/${designToView.id}`}>View Full Page</Link>
+                  <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
+                    View Full Page
                   </Button>
                   <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
               </DialogFooter>
@@ -311,6 +333,28 @@ export function DesignsTable({ designs }: DesignsTableProps) {
           ) : null}
         </DialogContent>
       </Dialog>
+      
+      <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
+        <SheetContent className="p-0 sm:max-w-2xl">
+          <SheetHeader className="p-6 pb-4">
+            <SheetTitle>Edit Design Project</SheetTitle>
+            <SheetDescription>
+              Make changes to your project here. Click save when you're done.
+            </SheetDescription>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-6.5rem)]">
+            <div className="px-6 pb-6">
+              {designToEdit && (
+                <DesignForm
+                  design={designToEdit}
+                  view="sheet"
+                  onSuccess={() => handleEditSheetOpenChange(false)}
+                />
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
         <DialogContent>

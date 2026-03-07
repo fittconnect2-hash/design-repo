@@ -3,7 +3,7 @@
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Edit, ExternalLink, Figma, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit, ExternalLink, Figma } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,17 @@ import { useDoc, useFirestore, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { DesignForm } from '@/components/design-form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function DesignDetailsSkeleton() {
   return (
@@ -61,13 +71,14 @@ export default function DesignDetailsPage() {
   const params = useParams<{ id: string }>();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
   const designRef = useMemo(() => {
     if (!user || !params.id) return null;
     return doc(firestore, 'users', user.uid, 'designProjects', params.id);
   }, [firestore, user, params.id]);
 
-  const { data: design, isLoading: isDesignLoading } = useDoc<Design>(designRef);
+  const { data: design, isLoading: isDesignLoading } = useDoc<Design & { id: string }>(designRef);
 
   const isLoading = isUserLoading || isDesignLoading;
 
@@ -91,12 +102,31 @@ export default function DesignDetailsPage() {
           </Button>
           <div className="flex items-center gap-2">
             <ShareButton />
-            <Button asChild>
-              <Link href={`/designs/${design.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Link>
-            </Button>
+            <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+              <SheetTrigger asChild>
+                <Button>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="p-0 sm:max-w-2xl">
+                <SheetHeader className="p-6 pb-4">
+                  <SheetTitle>Edit Design Project</SheetTitle>
+                  <SheetDescription>
+                    Make changes to your project here. Click save when you're done.
+                  </SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-6.5rem)]">
+                  <div className="px-6 pb-6">
+                    <DesignForm
+                      design={design}
+                      view="sheet"
+                      onSuccess={() => setIsEditSheetOpen(false)}
+                    />
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

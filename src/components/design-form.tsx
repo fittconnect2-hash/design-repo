@@ -101,7 +101,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 newVersion = '1.0';
             }
         } else {
-            // If no version exists, or it's in a weird format, start it at 1.0
             newVersion = '1.0';
         }
 
@@ -119,9 +118,8 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           updatedAt: serverTimestamp(),
         };
         await setDoc(designRef, dataToUpdate, { merge: true });
-        toast({ title: 'Success', description: 'Design updated successfully. Refreshing...' });
+        toast({ title: 'Success', description: 'Design updated successfully.' });
         
-        window.location.assign(`/designs/${design.id}`);
       } else {
         // Create new design
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
@@ -141,17 +139,18 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         };
 
         await setDoc(newDocRef, dataToCreate);
-        toast({ title: 'Success', description: 'Design created. Refreshing project list...' });
-        
-        if (onSuccess) {
-          onSuccess();
-        }
-        window.location.reload();
+        toast({ title: 'Success', description: 'Design created.' });
       }
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
     } catch (error: unknown) {
       console.error("Operation failed:", error);
       const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
       toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
+    } finally {
       setIsSubmitting(false);
     }
   };
