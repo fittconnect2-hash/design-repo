@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Edit, ExternalLink, Figma, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useDoc, useFirestore, useUser } from '@/firebase';
@@ -25,6 +25,7 @@ import { DesignForm } from '@/components/design-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { CardTitle } from '@/components/ui/card';
 
 function DesignDetailsSkeleton() {
   return (
@@ -108,7 +109,7 @@ export default function DesignDetailsPage() {
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
           <Button asChild variant="ghost" className="pl-0">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/projects" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             All Projects
           </Link>

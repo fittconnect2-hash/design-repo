@@ -25,15 +25,15 @@ type NavLink = {
   icon: LucideIcon;
 };
 
-const workspaceLinks: NavLink[] = [
-  { href: "/", label: "Projects", icon: FolderKanban },
-  { href: "/designs", label: "Design Repo", icon: Archive },
-];
-
 const insightsLinks: NavLink[] = [
-    { href: "/overview", label: "Overview", icon: LayoutDashboard },
+    { href: "/", label: "Overview", icon: LayoutDashboard },
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/reports", label: "Report", icon: BookText },
+];
+
+const workspaceLinks: NavLink[] = [
+  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/designs", label: "Design Repo", icon: Archive },
 ];
 
 const adminLinks: NavLink[] = [
@@ -47,8 +47,11 @@ export function SidebarNav() {
     return links.map((link) => {
       let isActive;
       if (link.href === '/') {
-        // "Projects" is active on the homepage and on specific design pages.
-        isActive = pathname === '/' || /^\/designs\/.+/.test(pathname);
+        // "Overview" is active only on the homepage.
+        isActive = pathname === '/';
+      } else if (link.href === '/projects') {
+         // "Projects" is active on the projects page and on specific design pages.
+        isActive = pathname.startsWith('/projects') || /^\/designs\/.+/.test(pathname);
       } else if (link.href === '/designs') {
         // "Design Repo" is active only on the /designs page.
         isActive = pathname === '/designs';
@@ -78,15 +81,15 @@ export function SidebarNav() {
   return (
     <>
       <SidebarGroup>
-        <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-        <SidebarMenu>
-          {renderLinks(workspaceLinks)}
-        </SidebarMenu>
-      </SidebarGroup>
-      <SidebarGroup>
         <SidebarGroupLabel>Insights</SidebarGroupLabel>
         <SidebarMenu>
           {renderLinks(insightsLinks)}
+        </SidebarMenu>
+      </SidebarGroup>
+      <SidebarGroup>
+        <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+        <SidebarMenu>
+          {renderLinks(workspaceLinks)}
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup>

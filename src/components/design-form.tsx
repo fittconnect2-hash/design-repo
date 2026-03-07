@@ -348,7 +348,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 </SheetClose>
               ) : (
                 <Button type="button" variant="outline" asChild disabled={isSubmitting}>
-                    <Link href={design ? `/designs/${design.id}` : '/'}>Cancel</Link>
+                    <Link href={design ? `/designs/${design.id}` : '/projects'}>Cancel</Link>
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
