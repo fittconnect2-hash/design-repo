@@ -301,11 +301,22 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               <TableHead className="w-[80px] hidden sm:table-cell">Image</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="hidden md:table-cell">Project</TableHead>
-              <TableHead className="hidden lg:table-cell">Tags</TableHead>
-              <TableHead className="hidden md:table-cell">Version</TableHead>
-              <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
-              {!isPublic && <TableHead className="hidden md:table-cell">Status</TableHead>}
-              {!isPublic && <TableHead className="text-right w-[80px]">Actions</TableHead>}
+              
+              {isPublic ? (
+                <>
+                  <TableHead className="hidden xl:table-cell">Figma</TableHead>
+                  <TableHead className="hidden xl:table-cell">Prototype</TableHead>
+                  <TableHead className="text-right w-[120px]">Details</TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead className="hidden lg:table-cell">Tags</TableHead>
+                  <TableHead className="hidden md:table-cell">Version</TableHead>
+                  <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead className="text-right w-[80px]">Actions</TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -333,72 +344,97 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                   </TableCell>
                   <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
                    <TableCell className="hidden md:table-cell text-muted-foreground">{projectMap.get(design.projectId) || design.projectName || 'N/A'}</TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {design.tags?.slice(0, 3).map((tag, index) => (
-                        <Badge key={`${design.id}-${tag}-${index}`} variant="secondary">{tag}</Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                   <TableCell className="hidden md:table-cell">
-                    <Badge variant="outline">v{design.version}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}
-                  </TableCell>
-                  {!isPublic && (
-                    <TableCell className="hidden md:table-cell">
-                      {design.isPublic ? (
-                        <Badge variant="default" className="bg-green-500 hover:bg-green-600">Public</Badge>
-                      ) : (
-                        <Badge variant="secondary">Private</Badge>
-                      )}
-                    </TableCell>
-                  )}
-                  {!isPublic && (
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() => handleOpenViewModal(design)}
-                            className="flex cursor-pointer items-center"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => handleOpenEditSheet(design)}
-                            className="flex cursor-pointer items-center"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                           <DropdownMenuItem
-                            onSelect={() => handleOpenPublicConfirmModal(design)}
-                            className="cursor-pointer"
-                          >
-                            {design.isPublic ? (
-                              <><Lock className="mr-2 h-4 w-4" /> Make Private</>
-                            ) : (
-                              <><Globe className="mr-2 h-4 w-4" /> Make Public</>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => handleOpenDeleteModal(design)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                  
+                  {isPublic ? (
+                    <>
+                      <TableCell className="hidden xl:table-cell">
+                        {design.figmaLink ? (
+                          <a href={design.figmaLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+                            <Figma className="h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{design.figmaLink}</span>
+                          </a>
+                        ) : <span className="text-muted-foreground">N/A</span>}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {design.prototypeUrl ? (
+                          <a href={design.prototypeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+                            <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{design.prototypeUrl}</span>
+                          </a>
+                        ) : <span className="text-muted-foreground">N/A</span>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenViewModal(design)}>
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {design.tags?.slice(0, 3).map((tag, index) => (
+                            <Badge key={`${design.id}-${tag}-${index}`} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline">v{design.version}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {design.isPublic ? (
+                          <Badge variant="default" className="bg-green-500 hover:bg-green-600">Public</Badge>
+                        ) : (
+                          <Badge variant="secondary">Private</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenViewModal(design)}
+                              className="flex cursor-pointer items-center"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenEditSheet(design)}
+                              className="flex cursor-pointer items-center"
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenPublicConfirmModal(design)}
+                              className="cursor-pointer"
+                            >
+                              {design.isPublic ? (
+                                <><Lock className="mr-2 h-4 w-4" /> Make Private</>
+                              ) : (
+                                <><Globe className="mr-2 h-4 w-4" /> Make Public</>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => handleOpenDeleteModal(design)}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </>
                   )}
                 </TableRow>
               ))
@@ -412,94 +448,97 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
           </TableBody>
         </Table>
       </div>
+      
+      <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
+        <DialogContent className="sm:max-w-3xl p-0">
+          {designToView ? (
+            <>
+              <DialogHeader className="p-6 pb-4">
+                <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
+                <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                <div className="px-6 pb-6 space-y-6">
+                  <div className="relative aspect-video w-full">
+                    <Image
+                      src={designToView.imageUrl}
+                      alt={designToView.name}
+                      fill
+                      className="object-cover rounded-md border"
+                      data-ai-hint="project hero"
+                      priority
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {designToView.tags?.map((tag, index) => (
+                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
+                  
+                  <Separator />
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div>
+                          <div className="font-semibold text-foreground">Project</div>
+                          <div className="text-muted-foreground">{projectMap.get(designToView.projectId) || 'N/A'}</div>
+                      </div>
+                      <div>
+                          <div className="font-semibold text-foreground">Version</div>
+                          <div className="text-muted-foreground">v{designToView.version}</div>
+                      </div>
+                      <div>
+                          <div className="font-semibold text-foreground">Created</div>
+                          <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
+                      </div>
+                      <div>
+                          <div className="font-semibold text-foreground">Last Updated</div>
+                          <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
+                      </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
+                          <Figma className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
+                        </CardContent>
+                      </Card>
+                    </a>
+                    <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <UiCardTitle className="text-sm font-medium">Prototype Link</UiCardTitle>
+                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
+                        </CardContent>
+                      </Card>
+                    </a>
+                  </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="p-6 pt-4 border-t">
+                  {!isPublic && 
+                    <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
+                      View Full Page
+                    </Button>
+                  }
+                  <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {!isPublic && (
         <>
-          <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
-            <DialogContent className="sm:max-w-3xl p-0">
-              {designToView ? (
-                <>
-                  <DialogHeader className="p-6 pb-4">
-                    <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
-                    <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
-                  </DialogHeader>
-                  <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                    <div className="px-6 pb-6 space-y-6">
-                      <div className="relative aspect-video w-full">
-                        <Image
-                          src={designToView.imageUrl}
-                          alt={designToView.name}
-                          fill
-                          className="object-cover rounded-md border"
-                          data-ai-hint="project hero"
-                          priority
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {designToView.tags?.map((tag, index) => (
-                          <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                        ))}
-                      </div>
-                      
-                      <Separator />
-
-                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                          <div>
-                              <div className="font-semibold text-foreground">Project</div>
-                              <div className="text-muted-foreground">{projectMap.get(designToView.projectId) || 'N/A'}</div>
-                          </div>
-                          <div>
-                              <div className="font-semibold text-foreground">Version</div>
-                              <div className="text-muted-foreground">v{designToView.version}</div>
-                          </div>
-                          <div>
-                              <div className="font-semibold text-foreground">Created</div>
-                              <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
-                          </div>
-                          <div>
-                              <div className="font-semibold text-foreground">Last Updated</div>
-                              <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
-                          </div>
-                      </div>
-
-                      <Separator />
-
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                              <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
-                              <Figma className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
-                            </CardContent>
-                          </Card>
-                        </a>
-                        <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                              <UiCardTitle className="text-sm font-medium">Prototype Link</UiCardTitle>
-                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
-                            </CardContent>
-                          </Card>
-                        </a>
-                      </div>
-                    </div>
-                  </ScrollArea>
-                  <DialogFooter className="p-6 pt-4 border-t">
-                      <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
-                        View Full Page
-                      </Button>
-                      <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
-                  </DialogFooter>
-                </>
-              ) : null}
-            </DialogContent>
-          </Dialog>
-          
           <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
             <SheetContent className="p-0 sm:max-w-2xl">
               <SheetHeader className="p-6 pb-4">
