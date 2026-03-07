@@ -1,11 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { DesignsTable } from '@/components/designs-table';
-import type { Design, Project } from '@/lib/definitions';
+import type { Design } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -27,24 +26,16 @@ function SharePageSkeleton() {
 }
 
 export default function SharePage() {
-  const params = useParams<{ userId: string }>();
   const firestore = useFirestore();
-  const userId = params.userId;
   const [selectedProjectId, setSelectedProjectId] = useState('all');
 
   const designsQuery = useMemo(() => {
     const collRef = collection(firestore, 'designs');
-    // Fetch all public designs. We will filter by user on the client-side
-    // to avoid needing a composite index in Firestore.
+    // Fetch all public designs.
     return query(collRef, where('isPublic', '==', true));
   }, [firestore]);
 
-  const { data: allPublicDesigns, isLoading } = useCollection<Design & { id: string }>(designsQuery);
-
-  const designs = useMemo(() => {
-    if (!allPublicDesigns || !userId) return [];
-    return allPublicDesigns.filter(design => design.userId === userId);
-  }, [allPublicDesigns, userId]);
+  const { data: designs, isLoading } = useCollection<Design & { id: string }>(designsQuery);
 
   const projects = useMemo(() => {
     if (!designs) return [];
@@ -70,10 +61,10 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10">
-      <div className="mx-auto w-full">
+      <div className="mx-auto w-full max-w-7xl">
         <header className="mb-8">
             <h1 className="text-4xl font-headline font-bold tracking-tight">Shared Designs</h1>
-            <p className="text-muted-foreground mt-1">A publicly shared collection of designs.</p>
+            <p className="text-muted-foreground mt-1">A collection of all public designs in the workspace.</p>
         </header>
         <main className="space-y-6">
           {isLoading ? (
@@ -107,10 +98,10 @@ export default function SharePage() {
           ) : (
              <Card className="flex flex-col items-center justify-center py-20">
               <CardHeader>
-                <CardTitle className="text-2xl">No Designs Found</CardTitle>
+                <CardTitle className="text-2xl">No Public Designs Found</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mt-2">This user hasn't shared any designs yet.</p>
+                <p className="text-muted-foreground mt-2">There are no designs currently marked as public.</p>
               </CardContent>
             </Card>
           )}
