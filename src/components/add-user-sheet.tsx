@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -65,37 +65,39 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
     mode: 'onChange',
   });
 
-  const onSubmit = async (values: InviteFormValues) => {
+  const onSubmit = (values: InviteFormValues) => {
     if (!user) return;
     setIsSubmitting(true);
+    
+    const inviteCollectionRef = collection(firestore, 'invites');
+    // Generate a new document reference client-side to get the ID beforehand.
+    const newDocRef = doc(inviteCollectionRef);
+    
     const inviteData = {
+      id: newDocRef.id, // Include the ID in the document data as per schema.
       email: values.email,
       role: values.role,
       createdAt: serverTimestamp(),
     };
-    try {
-      const inviteCollectionRef = collection(firestore, 'invites');
-      const newDocRef = await addDoc(inviteCollectionRef, inviteData);
-      const origin = window.location.origin;
-      const link = `${origin}/signup?invite=${newDocRef.id}`;
-      setInviteDetails({ link, email: values.email });
-      toast({ title: 'Success', description: 'Invitation created.' });
-    } catch (error) {
-       const permissionError = new FirestorePermissionError({
-        path: 'invites', // path of the collection
-        operation: 'create',
-        requestResourceData: inviteData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
 
-      toast({
-        variant: 'destructive',
-        title: 'Permission Denied',
-        description: 'You do not have permission to create an invitation.',
+    // Use setDoc, which is non-blocking when chained with .catch()
+    setDoc(newDocRef, inviteData)
+      .then(() => {
+        setIsSubmitting(false); // Stop submitting on success
+        const origin = window.location.origin;
+        const link = `${origin}/signup?invite=${newDocRef.id}`;
+        setInviteDetails({ link, email: values.email });
+        toast({ title: 'Success', description: 'Invitation created.' });
+      })
+      .catch((error: any) => {
+        setIsSubmitting(false); // Stop submitting on error
+        const permissionError = new FirestorePermissionError({
+          path: newDocRef.path,
+          operation: 'create',
+          requestResourceData: inviteData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleCopyToClipboard = () => {
