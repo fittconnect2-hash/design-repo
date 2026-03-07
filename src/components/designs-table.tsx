@@ -63,12 +63,12 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const firestore = useFirestore();
 
   React.useEffect(() => {
-    if (!isViewModalOpen && !isDeleteModalOpen) {
+    if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen) {
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
     }
-  }, [isViewModalOpen, isDeleteModalOpen]);
+  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen]);
 
   const handleShare = (designId: string) => {
     const url = `${window.location.origin}/designs/${designId}`;
