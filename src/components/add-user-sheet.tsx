@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Copy, Check, Loader2 } from 'lucide-react';
+import { Copy, Check, Loader2, Mail, CircleCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -53,7 +53,7 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
   const firestore = useFirestore();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteDetails, setInviteDetails] = useState<{ link: string; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const form = useForm<InviteFormValues>({
@@ -68,22 +68,30 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
   const onSubmit = async (values: InviteFormValues) => {
     if (!user) return;
     setIsSubmitting(true);
+    const inviteData = {
+      email: values.email,
+      role: values.role,
+      createdAt: serverTimestamp(),
+    };
     try {
       const inviteCollectionRef = collection(firestore, 'invites');
-      const newDocRef = await addDoc(inviteCollectionRef, {
-        email: values.email,
-        role: values.role,
-        createdAt: serverTimestamp(),
-      });
+      const newDocRef = await addDoc(inviteCollectionRef, inviteData);
       const origin = window.location.origin;
-      setInviteLink(`${origin}/signup?invite=${newDocRef.id}`);
+      const link = `${origin}/signup?invite=${newDocRef.id}`;
+      setInviteDetails({ link, email: values.email });
       toast({ title: 'Success', description: 'Invitation created.' });
     } catch (error) {
-      console.error('Failed to create invite:', error);
+       const permissionError = new FirestorePermissionError({
+        path: 'invites', // path of the collection
+        operation: 'create',
+        requestResourceData: inviteData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to create invitation.',
+        title: 'Permission Denied',
+        description: 'You do not have permission to create an invitation.',
       });
     } finally {
       setIsSubmitting(false);
@@ -91,8 +99,8 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
   };
 
   const handleCopyToClipboard = () => {
-    if (!inviteLink) return;
-    navigator.clipboard.writeText(inviteLink).then(() => {
+    if (!inviteDetails) return;
+    navigator.clipboard.writeText(inviteDetails.link).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -102,9 +110,18 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
     if (!isOpen) {
       // Reset state when closing
       form.reset();
-      setInviteLink(null);
+      setInviteDetails(null);
     }
     onOpenChange(isOpen);
+  };
+  
+  const generateMailtoLink = () => {
+    if (!inviteDetails) return '';
+    const subject = encodeURIComponent("You're invited to join DesignDock");
+    const body = encodeURIComponent(
+      `Hello,\n\nYou have been invited to join our team on DesignDock.\n\nPlease use the following link to sign up:\n${inviteDetails.link}\n\nWe're looking forward to collaborating with you!\n\nBest,\nThe DesignDock Team`
+    );
+    return `mailto:${inviteDetails.email}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -113,21 +130,29 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
         <SheetHeader>
           <SheetTitle>Add New User</SheetTitle>
           <SheetDescription>
-            {inviteLink
-              ? 'Share this unique link with the user to complete their registration.'
-              : 'Create an invitation by providing the user\'s email and role.'}
+            {inviteDetails
+              ? 'Your invite is ready to be sent.'
+              : "Create an invitation by providing the user's email and role."}
           </SheetDescription>
         </SheetHeader>
         <div className="py-8">
-          {inviteLink ? (
-            <div className="space-y-4">
+          {inviteDetails ? (
+            <div className="space-y-4 text-center">
+              <CircleCheck className="mx-auto h-12 w-12 text-green-500" />
+              <h3 className="text-lg font-medium">Invite Link Created!</h3>
               <p className="text-sm text-muted-foreground">
-                The user must sign up using this link to be added to your workspace with the assigned role.
+                An invitation for {inviteDetails.email} has been created.
               </p>
-              <div className="flex items-center space-x-2">
-                <Input value={inviteLink} readOnly />
-                <Button variant="outline" size="icon" onClick={handleCopyToClipboard}>
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                 <Button asChild className="w-full sm:w-auto">
+                    <a href={generateMailtoLink()} target="_blank" rel="noopener noreferrer">
+                        <Mail className="mr-2 h-4 w-4" />
+                        Email Invite
+                    </a>
+                </Button>
+                <Button variant="outline" onClick={handleCopyToClipboard} className="w-full sm:w-auto">
+                    {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                    {copied ? 'Link Copied' : 'Copy Link'}
                 </Button>
               </div>
             </div>
@@ -181,7 +206,7 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
         <SheetFooter>
           <SheetClose asChild>
             <Button variant="outline">
-              {inviteLink ? 'Done' : 'Cancel'}
+              {inviteDetails ? 'Done' : 'Cancel'}
             </Button>
           </SheetClose>
         </SheetFooter>
