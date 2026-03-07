@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -19,6 +20,10 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useDoc, useFirestore, useUser } from "@/firebase";
+import { useMemo } from "react";
+import { doc } from "firebase/firestore";
+import type { UserProfile } from "@/lib/definitions";
 
 type NavLink = {
   href: string;
@@ -44,6 +49,20 @@ const adminLinks: NavLink[] = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemo(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  
+  const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
+  const isAdmin = useMemo(() => isSuperAdminByEmail || userProfile?.role === 'Admin', [isSuperAdminByEmail, userProfile]);
+
+  const isLoading = isUserLoading || (user && isUserProfileLoading);
 
   const renderLinks = (links: NavLink[]) => {
     return links.map((link) => {
@@ -72,13 +91,42 @@ export function SidebarNav() {
       );
     });
   };
+  
+  if (isLoading) {
+    return (
+      <>
+        <SidebarGroup>
+          <SidebarGroupLabel>Insights</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuSkeleton showIcon />
+            <SidebarMenuSkeleton showIcon />
+            <SidebarMenuSkeleton showIcon />
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuSkeleton showIcon />
+            <SidebarMenuSkeleton showIcon />
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuSkeleton showIcon />
+            <SidebarMenuSkeleton showIcon />
+          </SidebarMenu>
+        </SidebarGroup>
+      </>
+    );
+  }
 
   return (
     <>
       <SidebarGroup>
         <SidebarGroupLabel>Insights</SidebarGroupLabel>
         <SidebarMenu>
-          {renderLinks(insightsLinks)}
+          {isAdmin ? renderLinks(insightsLinks) : renderLinks(insightsLinks.filter(l => l.href === '/'))}
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup>
@@ -87,12 +135,14 @@ export function SidebarNav() {
           {renderLinks(workspaceLinks)}
         </SidebarMenu>
       </SidebarGroup>
-      <SidebarGroup>
-        <SidebarGroupLabel>Administration</SidebarGroupLabel>
-        <SidebarMenu>
-          {renderLinks(adminLinks)}
-        </SidebarMenu>
-      </SidebarGroup>
+      {isAdmin && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarMenu>
+            {renderLinks(adminLinks)}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
     </>
   );
 }
