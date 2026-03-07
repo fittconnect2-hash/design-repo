@@ -2,17 +2,17 @@
  * # Firestore Security Rules for DesignDock
  *
  * ## Core Philosophy
- * This ruleset allows any user to read all projects and public designs, fostering
+ * This ruleset allows any authenticated user to read all projects and designs, fostering
  * a collaborative environment. Write access (`create`, `update`, `delete`) is strictly
  * controlled, limited to the document owner or an administrator.
  *
  * ## Key Security Decisions
  * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
- * - **Admin Role:** Users with `role == 'Admin'` in their user profile have elevated privileges.
- * - **Public Reads:** All users, authenticated or not, can read from the `/projects` collection.
- *   They can also query the `/designs` collection and read any document where `isPublic == true`.
- * - **Strict Write Ownership:** Write operations are only granted if the requesting user's UID
- *   matches the `userId` field in the document, or if the user is an admin.
+ * - **Admin Role:** Users with `role == 'Admin'` in their profile have elevated privileges.
+ * - **Collaborative Reads:** All authenticated users (`isSignedIn()`) can read from the `/projects`
+ *   and `/designs` collections.
+ * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
+ *   share page (`/share/{userId}`).
  * - **Stale Rule Fix:** Added a comment to force redeployment and fix potential stale rules.
  */
 rules_version = '2';
@@ -109,6 +109,22 @@ service cloud.firestore {
       allow update: if false;
       // An admin can delete an invite, or a signed-in user can delete the invite they just used.
       allow delete: if isAdmin() || isSignedIn();
+    }
+
+    match /tasks/{taskId} {
+      // Any signed-in user can read, create, update, and delete tasks to foster collaboration.
+      allow read, write: if isSignedIn();
+    }
+
+    match /auditLogs/{auditLogId} {
+      // Only admins can read audit logs.
+      allow get, list: if isAdmin();
+      
+      // Any signed-in user can create a log entry for their own actions.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Logs are immutable.
+      allow update, delete: if false;
     }
   }
 }
