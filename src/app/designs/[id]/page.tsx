@@ -3,12 +3,11 @@
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Edit, ExternalLink, Figma } from 'lucide-react';
+import { ArrowLeft, Edit, ExternalLink, Figma, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ShareButton } from '@/components/share-button';
 import { useDoc, useFirestore, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design } from '@/lib/definitions';
@@ -24,12 +23,14 @@ import {
 } from '@/components/ui/sheet';
 import { DesignForm } from '@/components/design-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 function DesignDetailsSkeleton() {
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <Skeleton className="h-8 w-24" />
+    <div className="flex-1 space-y-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-32" />
         <div className="flex items-center gap-2">
           <Skeleton className="h-10 w-24" />
           <Skeleton className="h-10 w-20" />
@@ -39,9 +40,9 @@ function DesignDetailsSkeleton() {
         <CardHeader className="p-0">
             <Skeleton className="aspect-video w-full" />
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
           <Skeleton className="h-10 w-3/4" />
-          <div className="my-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <Skeleton className="h-6 w-20 rounded-full" />
             <Skeleton className="h-6 w-24 rounded-full" />
             <Skeleton className="h-6 w-16 rounded-full" />
@@ -51,23 +52,23 @@ function DesignDetailsSkeleton() {
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-5/6" />
           </div>
-          <Separator className="my-6" />
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-28 w-full" />
-            </div>
+          <Separator className="my-2" />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
         </CardContent>
       </Card>
-    </>
+    </div>
   )
 }
-
 
 export default function DesignDetailsPage() {
   const params = useParams<{ id: string }>();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const { toast } = useToast();
 
   const designRef = useMemo(() => {
     if (!user || !params.id) return null;
@@ -78,6 +79,23 @@ export default function DesignDetailsPage() {
 
   const isLoading = isUserLoading || isDesignLoading;
 
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: 'Link Copied!',
+        description: 'The project link has been copied to your clipboard.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to copy link.',
+      });
+    });
+  };
+
   if (isLoading) {
     return <DesignDetailsSkeleton />;
   }
@@ -87,8 +105,8 @@ export default function DesignDetailsPage() {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex-1 space-y-6">
+      <div className="flex items-center justify-between">
           <Button asChild variant="ghost" className="pl-0">
           <Link href="/" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -96,7 +114,10 @@ export default function DesignDetailsPage() {
           </Link>
         </Button>
         <div className="flex items-center gap-2">
-          <ShareButton />
+          <Button variant="outline" onClick={handleShare}>
+            <Share2 className="mr-2 h-4 w-4" />
+            Share
+          </Button>
           <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
             <SheetTrigger asChild>
               <Button>
@@ -137,7 +158,10 @@ export default function DesignDetailsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <CardTitle className="text-3xl font-headline font-bold">{design.name}</CardTitle>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-3xl font-headline font-bold mb-2">{design.name}</CardTitle>
+            <Badge variant="outline" className="text-base">v{design.version}</Badge>
+          </div>
           <div className="my-4 flex flex-wrap gap-2">
             {design.tags.map((tag, index) => (
               <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
@@ -147,11 +171,32 @@ export default function DesignDetailsPage() {
           
           <Separator className="my-6" />
 
+           <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+              <div>
+                  <div className="font-semibold text-foreground">Project</div>
+                  <div className="text-muted-foreground">{design.projectName}</div>
+              </div>
+              <div>
+                  <div className="font-semibold text-foreground">Version</div>
+                  <div className="text-muted-foreground">v{design.version}</div>
+              </div>
+              <div>
+                  <div className="font-semibold text-foreground">Created</div>
+                  <div className="text-muted-foreground">{design.createdAt ? format(design.createdAt.toDate(), 'PP') : 'N/A'}</div>
+              </div>
+              <div>
+                  <div className="font-semibold text-foreground">Last Updated</div>
+                  <div className="text-muted-foreground">{design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}</div>
+              </div>
+          </div>
+
+          <Separator className="my-6" />
+
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <a href={design.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                  <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                  <Card className="h-full transition-all hover:border-primary hover:shadow-lg">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Figma Link</CardTitle>
+                          <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
                           <Figma className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
@@ -160,7 +205,7 @@ export default function DesignDetailsPage() {
                   </Card>
               </a>
                 <a href={design.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                  <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                  <Card className="h-full transition-all hover:border-primary hover:shadow-lg">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Prototype Link</CardTitle>
                           <ExternalLink className="h-4 w-4 text-muted-foreground" />
@@ -173,6 +218,6 @@ export default function DesignDetailsPage() {
           </div>
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
