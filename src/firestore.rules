@@ -70,10 +70,10 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     match /users/{userId} {
-      // Allow any signed-in user to view profiles to check roles and facilitate collaboration.
-      // This also resolves a recursive loop where isAdmin() depended on a rule that also called isAdmin().
+      // Any signed-in user can view profiles to check roles and facilitate collaboration.
       allow get: if isSignedIn();
-      allow list: if isAdmin();
+      // Any signed-in user can list other users to assign tasks.
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && hasValidUserCreateData(userId);
       allow update: if (isExistingOwner(userId) && hasImmutableUserId()) || isAdmin();
       // Only admins can delete user profiles from Firestore. This does not delete the Auth user.
