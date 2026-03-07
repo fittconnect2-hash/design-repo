@@ -81,8 +81,10 @@ service cloud.firestore {
 
       // Subcollection for notifications
       match /notifications/{notificationId} {
-        // A user can only read and write to their own notifications subcollection.
-        allow read, write: if isOwner(userId);
+        // A user can get, create, update, delete their own notifications.
+        allow get, write: if isOwner(userId);
+        // A user can list their own notifications.
+        allow list: if isOwner(userId);
       }
     }
 
