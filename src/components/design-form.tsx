@@ -94,8 +94,19 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
       if (design) {
         // Update existing design
         const currentVersion = design.version || '1.0';
-        const versionParts = currentVersion.split('.').map(Number);
-        const newVersion = `${versionParts[0]}.${(versionParts[1] || 0) + 1}`;
+        const versionParts = currentVersion.split('.').map(part => parseInt(part, 10));
+        
+        let major = 1;
+        let minor = 0;
+
+        if (versionParts.length > 0 && !isNaN(versionParts[0])) {
+            major = versionParts[0];
+        }
+        if (versionParts.length > 1 && !isNaN(versionParts[1])) {
+            minor = versionParts[1];
+        }
+        
+        const newVersion = `${major}.${minor + 1}`;
 
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
@@ -121,6 +132,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         await setDoc(newDocRef, dataToCreate);
         toast({ title: 'Success', description: 'Design created. Refreshing project list...' });
         
+        if (onSuccess) {
+          onSuccess();
+        }
         window.location.reload();
       }
     } catch (error: unknown) {
