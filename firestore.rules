@@ -94,7 +94,7 @@ service cloud.firestore {
       // Any signed-in user can read designs inside the app.
       // Unauthenticated users can only read if it's public (for the share page).
       allow get: if isSignedIn() || resource.data.isPublic == true;
-      allow list: if isSignedIn();
+      allow list: if true;
       
       // Only owner or admin can write.
       allow create: if (isOwner(request.resource.data.userId)) || isAdmin();
