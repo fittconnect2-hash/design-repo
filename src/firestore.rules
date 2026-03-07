@@ -58,6 +58,8 @@ service cloud.firestore {
     function isAdmin() {
       let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
       // An admin is someone with the 'Admin' role in their user document OR the super admin.
+      // NOTE: Using get() in rules for list queries can be slow and hit rate limits.
+      // This is a known potential performance issue.
       return isSuperAdmin() || (
         isSignedIn() &&
         exists(userDocPath) &&
@@ -122,11 +124,10 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // Any signed-in user can read any task data.
-      // The application's UI is responsible for filtering which tasks are shown
-      // to which user (Admins see all, Staff Designers see their own).
-      // This is a simplified rule to ensure application functionality.
-      allow read: if isSignedIn();
+      // A user can read a task if they are an admin OR if the task is assigned to them.
+      // This allows admins to view task detail pages directly, while the client query
+      // handles what is shown on the main task board.
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.assignedToId);
       
       // Any signed-in user can create/update tasks to allow assignment.
       allow write: if isSignedIn();

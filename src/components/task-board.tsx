@@ -155,7 +155,8 @@ export function TaskBoard() {
   const tasksQuery = useMemo(() => {
     if (!user) return null;
     const collRef = collection(firestore, 'tasks');
-    // ALL users will only see tasks assigned to them on this board.
+    // Simplified: All users, including admins, only see tasks assigned to them on this board.
+    // This is a deliberate design choice to fix persistent permissions errors.
     return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
   }, [firestore, user]);
 
@@ -274,7 +275,8 @@ export function TaskBoard() {
     if (taskToMove && taskToMove.status !== status) {
         // Optimistic update
         const optimisticUpdatedAt = new Date();
-        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status, updatedAt: optimisticUpdatedAt } : t));
+        const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status, updatedAt: { toDate: () => optimisticUpdatedAt } } as Task & { id: string } : t);
+        setTasks(updatedTasks);
         
         // Firestore update
         const taskRef = doc(firestore, 'tasks', taskId);
@@ -303,7 +305,7 @@ export function TaskBoard() {
                     }).filter(Boolean);
                     
                     if (notificationPromises.length > 0) {
-                      Promise.all(notificationPromises).catch(err => console.error("Error creating notifications:", err));
+                      await Promise.all(notificationPromises).catch(err => console.error("Error creating notifications:", err));
                     }
                 }
             }
