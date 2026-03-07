@@ -88,7 +88,7 @@ export default function DesignsPage() {
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
         <div className="flex items-center gap-2">
-          {user && <ShareProjectsButton userId={user.uid} />}
+          {user && <ShareProjectsButton userId={user.uid} projects={projects || []} />}
           <AddDesignButton buttonText="Add Design" />
         </div>
       </div>

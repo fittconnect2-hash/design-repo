@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import { useSearchParams } from 'next/navigation';
 
 function SharePageSkeleton() {
   return (
@@ -27,13 +28,26 @@ function SharePageSkeleton() {
 
 export default function SharePage() {
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+
+  const projectIds = useMemo(() => {
+    const projectsParam = searchParams.get('projects');
+    return projectsParam ? projectsParam.split(',') : [];
+  }, [searchParams]);
 
   const designsQuery = useMemo(() => {
     const collRef = collection(firestore, 'designs');
-    // Fetch all public designs.
-    return query(collRef, where('isPublic', '==', true));
-  }, [firestore]);
+    
+    const clauses = [where('isPublic', '==', true)];
+
+    if (projectIds.length > 0) {
+      clauses.push(where('projectId', 'in', projectIds));
+    }
+    
+    // Fetch all public designs, optionally filtered by project IDs.
+    return query(collRef, ...clauses);
+  }, [firestore, projectIds]);
 
   const { data: designs, isLoading } = useCollection<Design & { id: string }>(designsQuery);
 
@@ -59,19 +73,24 @@ export default function SharePage() {
     return designs.filter(design => design.projectId === selectedProjectId);
   }, [designs, selectedProjectId]);
 
+  const pageTitle = projectIds.length > 0 ? "Shared Project Designs" : "Shared Designs";
+  const pageDescription = projectIds.length > 0 
+    ? "A collection of public designs from selected projects."
+    : "A collection of all public designs in the workspace.";
+
   return (
-    <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10">
+    <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10 w-full">
       <div className="mx-auto w-full">
         <header className="mb-8">
-            <h1 className="text-4xl font-headline font-bold tracking-tight">Shared Designs</h1>
-            <p className="text-muted-foreground mt-1">A collection of all public designs in the workspace.</p>
+            <h1 className="text-4xl font-headline font-bold tracking-tight">{pageTitle}</h1>
+            <p className="text-muted-foreground mt-1">{pageDescription}</p>
         </header>
         <main className="space-y-6">
           {isLoading ? (
             <SharePageSkeleton />
           ) : designs && designs.length > 0 ? (
             <>
-              {projects && projects.length > 0 && (
+              {projects && projects.length > 1 && (
                 <div className="flex items-center gap-4">
                   <div className="w-full max-w-xs space-y-2">
                     <Label htmlFor="project-filter">Filter by Project</Label>
@@ -101,7 +120,7 @@ export default function SharePage() {
                 <CardTitle className="text-2xl">No Public Designs Found</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mt-2">There are no designs currently marked as public.</p>
+                <p className="text-muted-foreground mt-2">There are no designs currently marked as public for the selected criteria.</p>
               </CardContent>
             </Card>
           )}

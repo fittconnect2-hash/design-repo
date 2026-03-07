@@ -67,7 +67,7 @@ export default function ProjectsPage() {
           <p className="text-muted-foreground">Your creative workspace. Grouped and organized.</p>
         </div>
         <div className="flex items-center gap-2">
-          {user && <ShareProjectsButton userId={user.uid} />}
+          {user && <ShareProjectsButton userId={user.uid} projects={projects || []} />}
           <AddProjectButton buttonText="Add Project" />
         </div>
       </div>
