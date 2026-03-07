@@ -11,6 +11,7 @@ export type Project = {
 export type Design = {
   userId: string;
   projectId: string;
+  projectName?: string;
   name: string;
   version: string;
   description: string;
@@ -18,6 +19,7 @@ export type Design = {
   prototypeUrl: string;
   imageUrl: string;
   tags: string[];
+  isPublic?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };

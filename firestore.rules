@@ -12,7 +12,7 @@
  *
  * ## Key Security Decisions
  * - **Public Read for Designs:** The `designs` subcollection is publicly readable (`get`, `list`)
- *   to support the public sharing feature.
+ *   to support the public sharing feature. A design is only gettable if `isPublic` is true.
  * - **Private Projects:** The `projects` subcollection is private. Only the owner can read or write.
  * - **No User Listing:** It is impossible for one user to list the profiles of other users.
  * - **Strict Write Ownership:** All write operations (`create`, `update`, `delete`) are granted
@@ -82,7 +82,8 @@ service cloud.firestore {
      * @path /users/{userId}/designs/{designId}
      */
     match /users/{userId}/designs/{designId} {
-      allow get, list: if true;
+      allow get: if isOwner(userId) || (get(/databases/$(database)/documents/users/$(userId)/designs/$(designId)).data.isPublic == true);
+      allow list: if true;
       allow create: if isOwner(userId) && hasValidOwnerId(userId);
       allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
       allow delete: if isExistingOwner(userId);

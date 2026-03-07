@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink, Folder } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 import type { Design, Project } from '@/lib/definitions';
@@ -21,6 +21,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,7 +42,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useCollection } from '@/firebase';
-import { doc, deleteDoc, collection, query } from 'firebase/firestore';
+import { doc, deleteDoc, collection, query, setDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -55,9 +65,12 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
+  const [designToTogglePublic, setDesignToTogglePublic] = React.useState<(Design & { id: string }) | null>(null);
+
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isPublicConfirmOpen, setIsPublicConfirmOpen] = React.useState(false);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -71,34 +84,29 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const { data: projects } = useCollection<Project>(projectsQuery);
 
   const projectMap = React.useMemo(() => {
+    if (isPublic) {
+      // In public view, derive from the designs themselves
+      const map = new Map<string, string>();
+      designs.forEach(d => {
+        if (d.projectId && d.projectName) {
+          map.set(d.projectId, d.projectName);
+        }
+      });
+      return map;
+    }
+    // In private view, use the fetched projects
     if (!projects) return new Map();
     return new Map(projects.map(p => [p.id, p.name]));
-  }, [projects]);
+  }, [projects, designs, isPublic]);
 
   React.useEffect(() => {
-    if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen) {
+    const isAnyModalOpen = isViewModalOpen || isEditSheetOpen || isDeleteModalOpen || isPublicConfirmOpen;
+    if (!isAnyModalOpen) {
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
     }
-  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen]);
-
-  const handleShare = (designId: string) => {
-    const url = `${window.location.origin}/designs/${designId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: 'Link Copied!',
-        description: 'The project link has been copied to your clipboard.',
-      });
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to copy link.',
-      });
-    });
-  };
+  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen, isPublicConfirmOpen]);
 
   const handleDeleteConfirm = () => {
     if (designToDelete) {
@@ -116,8 +124,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
             title: 'Success',
             description: 'Design deleted successfully.',
           });
-          setIsDeleteModalOpen(false);
-          setDesignToDelete(null);
+          handleDeleteModalOpenChange(false);
         })
         .catch(() => {
           const permissionError = new FirestorePermissionError({
@@ -131,6 +138,35 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
             description: 'Failed to delete design.',
           });
         });
+    }
+  };
+
+  const handleTogglePublicConfirm = async () => {
+    if (!designToTogglePublic || !auth.currentUser) return;
+    
+    const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', designToTogglePublic.id);
+    const newPublicState = !designToTogglePublic.isPublic;
+
+    try {
+      await setDoc(designRef, { isPublic: newPublicState }, { merge: true });
+      toast({
+        title: 'Success',
+        description: `Design has been made ${newPublicState ? 'public' : 'private'}.`,
+      });
+    } catch (error) {
+       const permissionError = new FirestorePermissionError({
+          path: designRef.path,
+          operation: 'update',
+          requestResourceData: { isPublic: newPublicState },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to update design status.',
+        });
+    } finally {
+        handlePublicConfirmOpenChange(false);
     }
   };
 
@@ -148,29 +184,30 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     setDesignToDelete(design);
     setIsDeleteModalOpen(true);
   };
+  
+  const handleOpenPublicConfirmModal = (design: Design & { id: string }) => {
+    setDesignToTogglePublic(design);
+    setIsPublicConfirmOpen(true);
+  };
 
   const handleViewModalOpenChange = (isOpen: boolean) => {
     setIsViewModalOpen(isOpen);
-    if (!isOpen) {
-      setDesignToView(null);
-      document.body.style.pointerEvents = 'auto';
-    }
+    if (!isOpen) setDesignToView(null);
   };
 
   const handleEditSheetOpenChange = (isOpen: boolean) => {
     setIsEditSheetOpen(isOpen);
-    if (!isOpen) {
-      setDesignToEdit(null);
-      document.body.style.pointerEvents = 'auto';
-    }
+    if (!isOpen) setDesignToEdit(null);
   };
   
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
-    if (!isOpen) {
-      setDesignToDelete(null);
-      document.body.style.pointerEvents = 'auto';
-    }
+    if (!isOpen) setDesignToDelete(null);
+  };
+
+  const handlePublicConfirmOpenChange = (isOpen: boolean) => {
+    setIsPublicConfirmOpen(isOpen);
+    if (!isOpen) setDesignToTogglePublic(null);
   };
 
   return (
@@ -185,6 +222,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               <TableHead className="hidden lg:table-cell">Tags</TableHead>
               <TableHead className="hidden md:table-cell">Version</TableHead>
               <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
+              {!isPublic && <TableHead className="hidden md:table-cell">Status</TableHead>}
               {!isPublic && <TableHead className="text-right w-[80px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -203,7 +241,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                     />
                   </TableCell>
                   <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
-                   <TableCell className="hidden md:table-cell text-muted-foreground">{projectMap.get(design.projectId) || 'N/A'}</TableCell>
+                   <TableCell className="hidden md:table-cell text-muted-foreground">{projectMap.get(design.projectId) || design.projectName || 'N/A'}</TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {design.tags?.slice(0, 3).map((tag, index) => (
@@ -217,6 +255,15 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                   <TableCell className="hidden lg:table-cell">
                     {design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}
                   </TableCell>
+                  {!isPublic && (
+                    <TableCell className="hidden md:table-cell">
+                      {design.isPublic ? (
+                        <Badge variant="default" className="bg-green-500 hover:bg-green-600">Public</Badge>
+                      ) : (
+                        <Badge variant="secondary">Private</Badge>
+                      )}
+                    </TableCell>
+                  )}
                   {!isPublic && (
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -235,18 +282,21 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                             View
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => handleShare(design.id)}
-                            className="cursor-pointer"
-                          >
-                            <Share2 className="mr-2 h-4 w-4" />
-                            Share
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
                             onSelect={() => handleOpenEditSheet(design)}
                             className="flex cursor-pointer items-center"
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
+                          </DropdownMenuItem>
+                           <DropdownMenuItem
+                            onSelect={() => handleOpenPublicConfirmModal(design)}
+                            className="cursor-pointer"
+                          >
+                            {design.isPublic ? (
+                              <><Lock className="mr-2 h-4 w-4" /> Make Private</>
+                            ) : (
+                              <><Globe className="mr-2 h-4 w-4" /> Make Public</>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={() => handleOpenDeleteModal(design)}
@@ -263,7 +313,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isPublic ? 6 : 7} className="h-24 text-center">
+                <TableCell colSpan={isPublic ? 6 : 8} className="h-24 text-center">
                   No designs to display.
                 </TableCell>
               </TableRow>
@@ -397,6 +447,23 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+           <AlertDialog open={isPublicConfirmOpen} onOpenChange={handlePublicConfirmOpenChange}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will change the visibility of the design &quot;{designToTogglePublic?.name}&quot;. 
+                  Do you want to make it {designToTogglePublic?.isPublic ? 'private' : 'public'}?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleTogglePublicConfirm}>
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </>

@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import { ShareProjectsButton } from '@/components/share-projects-button';
 
 function DesignsPageSkeleton() {
   return (
@@ -77,7 +78,10 @@ export default function DesignsPage() {
           <h1 className="text-3xl font-headline font-bold tracking-tight">Design Repo</h1>
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
-        <AddDesignButton buttonText="Add Design" />
+        <div className="flex items-center gap-2">
+          {user && <ShareProjectsButton userId={user.uid} />}
+          <AddDesignButton buttonText="Add Design" />
+        </div>
       </div>
       
       {hasDesigns && hasProjects && (

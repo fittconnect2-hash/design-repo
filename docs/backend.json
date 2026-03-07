@@ -106,6 +106,10 @@
           "type": "string",
           "description": "Reference to the Project this design belongs to. (Relationship: Project 1:N Design)"
         },
+        "projectName": {
+          "type": "string",
+          "description": "Denormalized name of the project for easier display."
+        },
         "name": {
           "type": "string",
           "description": "The name of the design."
@@ -139,6 +143,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "isPublic": {
+            "type": "boolean",
+            "description": "Indicates if the design is publicly accessible."
         },
         "createdAt": {
           "type": "string",

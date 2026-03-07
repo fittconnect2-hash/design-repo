@@ -91,6 +91,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
 
     const { uid } = auth.currentUser;
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+    
+    const selectedProject = projects?.find(p => p.id === values.projectId);
+    const projectName = selectedProject?.name || '';
 
     try {
       const designCollectionRef = collection(firestore, 'users', uid, 'designs');
@@ -117,6 +120,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         const designRef = doc(designCollectionRef, design.id);
         const dataToUpdate = {
           ...values,
+          projectName,
           tags: tagsArray,
           userId: uid,
           version: newVersion,
@@ -130,9 +134,11 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         const newDocRef = doc(designCollectionRef);
         const dataToCreate = {
           ...values,
+          projectName,
           userId: uid,
           tags: tagsArray,
           version: '1.0',
+          isPublic: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
