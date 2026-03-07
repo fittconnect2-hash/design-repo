@@ -1,3 +1,12 @@
+export type UserProfile = {
+  id: string;
+  displayName: string;
+  email: string;
+  role: 'Admin' | 'Member';
+  createdAt?: any;
+  updatedAt?: any;
+};
+
 export type Project = {
   userId: string;
   name: string;

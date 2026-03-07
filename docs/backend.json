@@ -19,6 +19,14 @@
           "type": "string",
           "description": "The user's preferred display name."
         },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the application, determining their permissions.",
+          "enum": [
+            "Admin",
+            "Member"
+          ]
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the user profile was created.",
@@ -34,6 +42,7 @@
         "id",
         "email",
         "displayName",
+        "role",
         "createdAt"
       ]
     },

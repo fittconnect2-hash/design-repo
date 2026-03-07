@@ -54,16 +54,22 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
+    function isAdmin() {
+      // Check if the user has an 'Admin' role in their user document.
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+
     // ----------------------------------------------------------------------
     // Collection Rules
     // ----------------------------------------------------------------------
 
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && hasValidUserCreateData(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableUserId();
-      allow delete: if false; // Deleting user profiles is disabled by default.
+      allow update: if (isExistingOwner(userId) && hasImmutableUserId()) || isAdmin();
+      // Only admins can delete user profiles from Firestore. This does not delete the Auth user.
+      allow delete: if isAdmin();
     }
 
     /**
@@ -82,8 +88,12 @@ service cloud.firestore {
      * @path /users/{userId}/designs/{designId}
      */
     match /users/{userId}/designs/{designId} {
-      allow get: if isOwner(userId) || (get(/databases/$(database)/documents/users/$(userId)/designs/$(designId)).data.isPublic == true);
+      // Anyone can read a design if it's public. Owners can read their own private designs.
+      allow get: if resource.data.isPublic == true || isOwner(userId);
+      // Public listing is allowed. The client query MUST filter for isPublic == true.
       allow list: if true;
+      
+      // Writes are restricted to owners.
       allow create: if isOwner(userId) && hasValidOwnerId(userId);
       allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
       allow delete: if isExistingOwner(userId);

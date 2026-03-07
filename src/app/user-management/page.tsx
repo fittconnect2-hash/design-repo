@@ -1,8 +1,68 @@
 'use client';
 
+import { useMemo } from 'react';
+import { collection, query, orderBy } from 'firebase/firestore';
+
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import type { UserProfile } from '@/lib/definitions';
+import { UsersTable } from '@/components/users-table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+function UserManagementSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-10 w-64" />
+      </div>
+      <Skeleton className="h-96 w-full" />
+    </div>
+  );
+}
+
 export default function UserManagementPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const usersQuery = useMemo(() => {
+    if (!user) return null;
+    // This query will only work for users with an 'Admin' role as per security rules.
+    const collRef = collection(firestore, 'users');
+    return query(collRef, orderBy('createdAt', 'desc'));
+  }, [firestore, user]);
+
+  const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile & { id: string }>(usersQuery);
+
+  const isLoading = isUserLoading || (user && isLoadingUsers);
+  
+  if (isLoading) {
+    return <UserManagementSkeleton />;
+  }
+  
+  const hasUsers = users && users.length > 0;
+  
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+            <div className="space-y-1">
+            <h1 className="text-3xl font-headline font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground">Manage all users in your workspace.</p>
+            </div>
+        </div>
+        <Card className="flex flex-col items-center justify-center py-20">
+            <CardHeader>
+            <CardTitle className="text-2xl text-destructive">Access Denied</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+            <p className="text-muted-foreground">You do not have permission to view this page.</p>
+            <p className="text-sm text-muted-foreground">Please contact your administrator to get an 'Admin' role.</p>
+            </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
        <div className="flex items-center justify-between">
@@ -11,14 +71,21 @@ export default function UserManagementPage() {
           <p className="text-muted-foreground">Manage all users in your workspace.</p>
         </div>
       </div>
-       <Card className="flex flex-col items-center justify-center py-20">
-          <CardHeader>
-            <CardTitle className="text-2xl">User Management Coming Soon</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-              <p className="text-muted-foreground">This page will allow you to manage workspace users.</p>
-          </CardContent>
-      </Card>
+
+      {hasUsers ? (
+        <Card>
+          <UsersTable users={users || []} />
+        </Card>
+      ) : (
+         <Card className="flex flex-col items-center justify-center py-20">
+            <CardHeader>
+              <CardTitle className="text-2xl">No Users Found</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Users who sign up will appear here.</p>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
