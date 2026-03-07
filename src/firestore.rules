@@ -129,11 +129,9 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       // A user can read, update (mark as read), and delete their own notifications.
-      allow get, update, delete: if isOwner(resource.data.userId);
+      allow read, update, delete: if isOwner(resource.data.userId);
       // Any signed-in user can create a notification for someone else.
       allow create: if isSignedIn();
-      // Users can only list their own notifications, which is enforced by the `get` rule.
-      allow list: if isSignedIn();
     }
   }
 }
