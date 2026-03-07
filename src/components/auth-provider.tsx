@@ -4,6 +4,7 @@ import { useUser } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { Skeleton } from './ui/skeleton';
+import { MainLayout } from './main-layout';
 
 const unprotectedRoutes = ['/login', '/signup'];
 
@@ -33,32 +34,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const isUnprotectedRoute = unprotectedRoutes.includes(pathname);
+
   useEffect(() => {
     if (isUserLoading) {
       return;
     }
 
-    const isUnprotectedRoute = unprotectedRoutes.includes(pathname);
-    const isProtectedRoute = !isUnprotectedRoute;
-
-    if (!user && isProtectedRoute) {
+    if (!user && !isUnprotectedRoute) {
       router.replace('/login');
     } else if (user && isUnprotectedRoute) {
       router.replace('/');
     }
-  }, [user, isUserLoading, router, pathname]);
+  }, [user, isUserLoading, router, pathname, isUnprotectedRoute]);
+  
+  const showLoading = isUserLoading || (!user && !isUnprotectedRoute) || (user && isUnprotectedRoute)
 
-  if (isUserLoading) {
+  if (showLoading) {
     return <LoadingScreen />;
   }
 
-  const isUnprotectedRoute = unprotectedRoutes.includes(pathname);
-  const isProtectedRoute = !isUnprotectedRoute;
-
-  // If we are in a state of redirecting, show a loading screen.
-  if ((!user && isProtectedRoute) || (user && isUnprotectedRoute)) {
-    return <LoadingScreen />;
+  if (isUnprotectedRoute) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return <MainLayout>{children}</MainLayout>;
 }
