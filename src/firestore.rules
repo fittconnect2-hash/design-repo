@@ -1,0 +1,96 @@
+/**
+ * # Firestore Security Rules for DesignDock
+ *
+ * ## Core Philosophy
+ * This ruleset enforces a strict user-ownership security model for writes,
+ * while allowing public read access for sharing purposes on designs.
+ *
+ * ## Data Structure
+ * The data is organized hierarchically. All user-specific data is nested under
+ * `/users/{userId}`, where `{userId}` is the user's unique Firebase Authentication UID.
+ * This structure makes ownership explicit.
+ *
+ * ## Key Security Decisions
+ * - **Public Read for Designs:** The `designs` subcollection is publicly readable (`get`, `list`)
+ *   to support the public sharing feature. A design is only gettable if `isPublic` is true.
+ * - **Private Projects:** The `projects` subcollection is private. Only the owner can read or write.
+ * - **No User Listing:** It is impossible for one user to list the profiles of other users.
+ * - **Strict Write Ownership:** All write operations (`create`, `update`, `delete`) are granted
+ *   only if the requesting user's UID matches the `{userId}` in the document path.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    
+    function hasValidUserCreateData(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    function hasImmutableUserId() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    function hasValidOwnerId(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    function hasImmutableOwnerId() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidUserCreateData(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableUserId();
+      allow delete: if false; // Deleting user profiles is disabled by default.
+    }
+
+    /**
+     * @description Controls access to high-level projects. Read and write are private.
+     * @path /users/{userId}/projects/{projectId}
+     */
+    match /users/{userId}/projects/{projectId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to designs. Read is public, writes are private.
+     * @path /users/{userId}/designs/{designId}
+     */
+    match /users/{userId}/designs/{designId} {
+      // Anyone can read a design if it's public. Owners can read their own private designs.
+      allow get: if isOwner(userId) || resource.data.isPublic == true;
+      // Public listing is allowed. The client query MUST filter for isPublic == true.
+      allow list: if true;
+      
+      // Writes are restricted to owners.
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
