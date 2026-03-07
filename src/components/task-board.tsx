@@ -148,18 +148,27 @@ export function TaskBoard() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<UserProfile>(userProfileRef);
+  
+  const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
+  const isAdmin = useMemo(() => isSuperAdminByEmail || currentUserProfile?.role === 'Admin', [isSuperAdminByEmail, currentUserProfile]);
 
   const tasksQuery = useMemo(() => {
-    if (!user || isLoadingCurrentUserProfile || !currentUserProfile) return null;
+    if (!user || isLoadingCurrentUserProfile) return null;
+
+    // A super admin might not have a profile doc yet, but they should still see tasks.
+    // A regular user needs a profile to determine their role.
+    if (!isAdmin && !currentUserProfile) {
+        return null;
+    }
 
     const collRef = collection(firestore, 'tasks');
 
-    if (currentUserProfile.role === 'Admin') {
+    if (isAdmin) {
       return query(collRef, orderBy('createdAt', 'desc'));
     } else {
-      return query(collRef, where('assignedToId', '==', user.uid));
+      return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
     }
-  }, [firestore, user, currentUserProfile, isLoadingCurrentUserProfile]);
+  }, [firestore, user, isLoadingCurrentUserProfile, currentUserProfile, isAdmin]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -280,11 +289,15 @@ export function TaskBoard() {
         // Firestore update
         const taskRef = doc(firestore, 'tasks', taskId);
         try {
-            await setDoc(taskRef, { status }, { merge: true });
+            await setDoc(taskRef, { status, updatedAt: serverTimestamp() }, { merge: true });
 
-            if (currentUserProfile && currentUserProfile.role === 'Staff Designer' && users) {
-                const admins = users.filter(u => u.role === 'Admin');
-                const notificationPromises = admins.map(admin => {
+            // Send notification if a non-admin user updates a task
+            if (currentUserProfile && !isAdmin && users) {
+                // Find all admins (by role or super admin email)
+                const admins = users.filter(u => u.role === 'Admin' || u.email === 'fittconnect2@gmail.com');
+                const uniqueAdmins = [...new Map(admins.map(item => [item.id, item])).values()];
+
+                const notificationPromises = uniqueAdmins.map(admin => {
                     const notificationRef = doc(collection(firestore, 'users', admin.id, 'notifications'));
                     const notificationData: Omit<Notification, 'createdAt'> = {
                         id: notificationRef.id,
