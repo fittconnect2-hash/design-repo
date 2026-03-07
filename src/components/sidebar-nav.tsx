@@ -16,6 +16,7 @@ import {
   History,
   FolderKanban,
   Archive,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -37,6 +38,7 @@ const workspaceLinks: NavLink[] = [
 ];
 
 const adminLinks: NavLink[] = [
+    { href: "/user-management", label: "User Management", icon: Users },
     { href: "/audit-logs",label: "Audit Logs", icon: History },
 ]
 
