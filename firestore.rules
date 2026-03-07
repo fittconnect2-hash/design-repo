@@ -132,8 +132,8 @@ service cloud.firestore {
       allow get, update, delete: if isOwner(resource.data.userId);
       // Any signed-in user can create a notification for someone else.
       allow create: if isSignedIn();
-      // Users cannot list all notifications.
-      allow list: if false;
+      // Users can only list their own notifications, which is enforced by the `get` rule.
+      allow list: if isSignedIn();
     }
   }
 }
