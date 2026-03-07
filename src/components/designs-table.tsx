@@ -431,7 +431,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {design.isPublic ? (
-                          <Badge variant="default" className="bg-green-500 hover:bg-green-600">Public</Badge>
+                          <Badge variant="outline" className="text-green-700 border-green-500/50 dark:text-green-400 dark:border-green-400/50">Public</Badge>
                         ) : (
                           <Badge variant="secondary">Private</Badge>
                         )}

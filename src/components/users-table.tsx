@@ -271,7 +271,7 @@ export function UsersTable({ users }: UsersTableProps) {
                     <Badge variant={user.role === 'Admin' ? 'default' : 'secondary'}>{user.role}</Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                     <Badge variant={user.status === 'Active' ? 'outline' : 'destructive'} className={user.status === 'Active' ? 'border-green-500 text-green-600' : ''}>
+                     <Badge variant={user.status === 'Active' ? 'outline' : 'destructive'} className={user.status === 'Active' ? 'border-green-500/50 text-green-700 dark:border-green-400/50 dark:text-green-400' : ''}>
                         {user.status}
                     </Badge>
                   </TableCell>
