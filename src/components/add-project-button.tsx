@@ -22,6 +22,14 @@ export function AddProjectButton({ buttonText = 'Add Project' }: { buttonText?: 
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [open]);
+
   if (!isMounted) {
     return (
       <Button>

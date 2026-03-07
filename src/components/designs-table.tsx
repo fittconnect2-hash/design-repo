@@ -87,6 +87,14 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     setRowSelection({});
   }, [designs]);
 
+  React.useEffect(() => {
+    if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen, isPublicConfirmOpen, bulkAction]);
+
   const projects = projectsProp;
 
   const projectMap = React.useMemo(() => {

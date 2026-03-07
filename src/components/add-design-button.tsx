@@ -22,6 +22,14 @@ export function AddDesignButton({ buttonText = 'Add Design' }: { buttonText?: st
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [open]);
+
   if (!isMounted) {
     // Render a placeholder on the server and initial client render
     return (

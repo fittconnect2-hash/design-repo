@@ -6,11 +6,6 @@
  * a collaborative environment. Write access (`create`, `update`, `delete`) is strictly
  * controlled, limited to the document owner or an administrator.
  *
- * ## Data Structure
- * Projects and Designs are stored in root collections to facilitate app-wide queries.
- * Each project and design document contains a `userId` field to identify the owner for
- * write-permission checks.
- *
  * ## Key Security Decisions
  * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
  * - **Admin Role:** Users with `role == 'Admin'` in their user profile have elevated privileges.
@@ -20,6 +15,7 @@
  *   matches the `userId` field in the document, or if the user is an admin.
  * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
  *   share page (`/share/{userId}`).
+ * - **Stale Rule Fix:** Added a comment to force redeployment and fix potential stale rules.
  */
 rules_version = '2';
 service cloud.firestore {

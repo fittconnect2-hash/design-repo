@@ -80,6 +80,14 @@ export function UsersTable({ users }: UsersTableProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
+  React.useEffect(() => {
+    if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
+
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
