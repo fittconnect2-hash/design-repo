@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 
 type TaskStatus = 'Todo' | 'In Progress' | 'Done';
@@ -131,7 +131,7 @@ function TaskBoardSkeleton() {
   );
 }
 
-export function TaskBoard() {
+export function TaskBoard({ filter }: { filter: 'all' | 'mine' }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const [tasks, setTasks] = useState<(Task & { id: string })[]>([]);
@@ -155,10 +155,14 @@ export function TaskBoard() {
   const tasksQuery = useMemo(() => {
     if (!user) return null;
     const collRef = collection(firestore, 'tasks');
-    // Simplified: All users, including admins, only see tasks assigned to them on this board.
-    // This is a deliberate design choice to fix persistent permissions errors.
-    return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
-  }, [firestore, user]);
+    
+    if (isAdmin && filter === 'all') {
+      return query(collRef, orderBy('updatedAt', 'desc'));
+    }
+    
+    // Non-admins or when filter is 'mine'
+    return query(collRef, where('assignedToId', '==', user.uid), orderBy('updatedAt', 'desc'));
+  }, [firestore, user, isAdmin, filter]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -183,12 +187,7 @@ export function TaskBoard() {
 
   useEffect(() => {
     if (fetchedTasks) {
-        const sortedTasks = [...fetchedTasks].sort((a, b) => {
-            const timeA = a.createdAt?.toDate().getTime() || 0;
-            const timeB = b.createdAt?.toDate().getTime() || 0;
-            return timeB - timeA;
-        });
-        setTasks(sortedTasks);
+        setTasks(fetchedTasks);
     } else {
       setTasks([]);
     }
