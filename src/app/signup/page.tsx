@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
@@ -15,9 +15,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { doc, serverTimestamp, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import type { Invite } from '@/lib/definitions';
 
 export default function SignupPage() {
   const [firstName, setFirstName] = useState('');
@@ -25,10 +26,42 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(true);
+  const [invite, setInvite] = useState<Invite | null>(null);
+
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteId = searchParams.get('invite');
+
+  useEffect(() => {
+    async function fetchInvite() {
+      if (!inviteId) {
+        setIsLoadingInvite(false);
+        return;
+      }
+      
+      const inviteRef = doc(firestore, 'invites', inviteId);
+      const inviteSnap = await getDoc(inviteRef);
+
+      if (inviteSnap.exists()) {
+        const inviteData = inviteSnap.data() as Invite;
+        setInvite(inviteData);
+        setEmail(inviteData.email);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Invite',
+          description: 'This invitation link is invalid or has expired.',
+        });
+        router.push('/signup');
+      }
+      setIsLoadingInvite(false);
+    }
+    fetchInvite();
+  }, [inviteId, firestore, router, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,10 +79,16 @@ export default function SignupPage() {
         id: user.uid,
         displayName,
         email,
-        role: 'Member', // Default role for new sign-ups
+        role: invite?.role || 'Staff Designer', // Use invite role or default
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      
+      // Delete the invite document after successful signup
+      if (inviteId) {
+        const inviteRef = doc(firestore, 'invites', inviteId);
+        await deleteDoc(inviteRef);
+      }
 
       toast({
         title: 'Account created',
@@ -65,13 +104,21 @@ export default function SignupPage() {
     }
   };
 
+  if (isLoadingInvite) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Sign Up</CardTitle>
           <CardDescription>
-            Enter your information to create an account
+            {invite ? `You've been invited to join! Complete your account setup.` : `Enter your information to create an account`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,6 +154,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={!!invite}
               />
             </div>
             <div className="grid gap-2">
@@ -135,12 +183,14 @@ export default function SignupPage() {
               Create an account
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="underline">
-              Login
-            </Link>
-          </div>
+          {!invite && (
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="underline">
+                Login
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

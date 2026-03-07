@@ -110,5 +110,18 @@ service cloud.firestore {
       allow update: if (isExistingOwner(userId) && hasImmutableOwnerId()) || isAdmin();
       allow delete: if isExistingOwner(userId) || isAdmin();
     }
+
+    match /invites/{inviteId} {
+      // Admins can create invites.
+      allow create: if isAdmin();
+      // Anyone can read an invite if they have the ID (for the signup page).
+      allow get: if true;
+      // No one can list all invites.
+      allow list: if false;
+      // No one can update an invite.
+      allow update: if false;
+      // A signed-in user can delete the invite they just used.
+      allow delete: if isSignedIn();
+    }
   }
 }

@@ -24,7 +24,7 @@
           "description": "The role of the user within the application, determining their permissions.",
           "enum": [
             "Admin",
-            "Member"
+            "Staff Designer"
           ]
         },
         "createdAt": {
@@ -180,6 +180,42 @@
         "imageUrl",
         "createdAt"
       ]
+    },
+    "Invite": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invite",
+      "type": "object",
+      "description": "Represents an invitation for a new user to join the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the invite."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email of the user being invited.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role assigned to the user upon signup.",
+          "enum": [
+            "Admin",
+            "Staff Designer"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the invite was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -245,8 +281,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/invites/{inviteId}",
+        "definition": {
+          "entityName": "Invite",
+          "schema": {
+            "$ref": "#/backend/entities/Invite"
+          },
+          "description": "Stores user invitations. Once an invite is used for signup, it should be deleted.",
+          "params": [
+            {
+              "name": "inviteId",
+              "description": "The unique identifier for the invite."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure separates Users, Projects, and Designs into distinct collections. User data is at the root under `/users/{userId}`. Both Projects and Designs are stored in subcollections under the user who owns them (`/users/{userId}/projects/{projectId}` and `/users/{userId}/designs/{designId}`). This hierarchical structure ensures that all of a user's data is logically grouped and enables simple, path-based security rules. By storing the `userId` field within every Project and Design document (denormalization), we achieve Authorization Independence, allowing security rules to verify ownership without costly cross-document `get()` calls. This design supports secure queries (QAPs), as a user can only list projects or designs under their own user path, naturally filtering the data by owner."
+    "reasoning": "The Firestore structure separates Users, Projects, and Designs into distinct collections. User data is at the root under `/users/{userId}`. Both Projects and Designs are stored in subcollections under the user who owns them (`/users/{userId}/projects/{projectId}` and `/users/{userId}/designs/{designId}`). This hierarchical structure ensures that all of a user's data is logically grouped and enables simple, path-based security rules. By storing the `userId` field within every Project and Design document (denormalization), we achieve Authorization Independence, allowing security rules to verify ownership without costly cross-document `get()` calls. This design supports secure queries (QAPs), as a user can only list projects or designs under their own user path, naturally filtering the data by owner. The `invites` collection is at the root to allow unauthenticated users to read a specific invite during the signup process."
   }
 }

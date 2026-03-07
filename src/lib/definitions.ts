@@ -2,7 +2,7 @@ export type UserProfile = {
   id: string;
   displayName: string;
   email: string;
-  role: 'Admin' | 'Member';
+  role: 'Admin' | 'Staff Designer';
   createdAt?: any;
   updatedAt?: any;
 };
@@ -31,4 +31,11 @@ export type Design = {
   isPublic?: boolean;
   createdAt?: any;
   updatedAt?: any;
+};
+
+export type Invite = {
+  id: string;
+  email: string;
+  role: 'Admin' | 'Staff Designer';
+  createdAt?: any;
 };

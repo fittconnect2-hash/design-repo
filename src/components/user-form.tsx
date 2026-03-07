@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const formSchema = z.object({
   displayName: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email(),
-  role: z.enum(['Admin', 'Member']),
+  role: z.enum(['Admin', 'Staff Designer']),
 });
 
 type UserFormValues = z.infer<typeof formSchema>;
@@ -47,7 +47,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
     defaultValues: {
       displayName: user.displayName || '',
       email: user.email || '',
-      role: user.role || 'Member',
+      role: user.role || 'Staff Designer',
     },
     mode: 'onChange',
   });
@@ -142,7 +142,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Member">Member</SelectItem>
+                  <SelectItem value="Staff Designer">Staff Designer</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
