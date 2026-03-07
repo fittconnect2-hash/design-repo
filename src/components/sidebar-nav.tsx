@@ -64,7 +64,7 @@ export function SidebarNav() {
 
   const isLoading = isUserLoading || (user && isUserProfileLoading);
 
-  const renderLinks = (links: NavLink[], iconGradient: string) => {
+  const renderLinks = (links: NavLink[], iconColor: string) => {
     return links.map((link) => {
       let isActive;
       if (link.href === '/') {
@@ -83,7 +83,7 @@ export function SidebarNav() {
             }}
           >
             <Link href={link.href}>
-              <link.icon className={`gradient-icon ${iconGradient}`} />
+              <link.icon className={iconColor} />
               <span>{link.label}</span>
             </Link>
           </SidebarMenuButton>
@@ -126,20 +126,20 @@ export function SidebarNav() {
       <SidebarGroup>
         <SidebarGroupLabel>Insights</SidebarGroupLabel>
         <SidebarMenu>
-          {isAdmin ? renderLinks(insightsLinks, "bg-gradient-icon-1") : renderLinks(insightsLinks.filter(l => l.href === '/'), "bg-gradient-icon-1")}
+          {isAdmin ? renderLinks(insightsLinks, "text-chart-1") : renderLinks(insightsLinks.filter(l => l.href === '/'), "text-chart-1")}
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup>
         <SidebarGroupLabel>Workspace</SidebarGroupLabel>
         <SidebarMenu>
-          {renderLinks(workspaceLinks, "bg-gradient-icon-2")}
+          {renderLinks(workspaceLinks, "text-chart-3")}
         </SidebarMenu>
       </SidebarGroup>
       {isAdmin && (
         <SidebarGroup>
           <SidebarGroupLabel>Administration</SidebarGroupLabel>
           <SidebarMenu>
-            {renderLinks(adminLinks, "bg-gradient-icon-3")}
+            {renderLinks(adminLinks, "text-primary")}
           </SidebarMenu>
         </SidebarGroup>
       )}
