@@ -1,10 +1,11 @@
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { Skeleton } from './ui/skeleton';
 import { MainLayout } from './main-layout';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const unprotectedRoutes = ['/login', '/signup'];
 
@@ -31,10 +32,29 @@ function LoadingScreen() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
 
   const isUnprotectedRoute = unprotectedRoutes.includes(pathname) || pathname.startsWith('/share/');
+
+  useEffect(() => {
+    if (user && firestore) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      getDoc(userDocRef).then((docSnap) => {
+        if (!docSnap.exists()) {
+          setDoc(userDocRef, {
+            id: user.uid,
+            displayName: user.displayName || user.email,
+            email: user.email,
+            role: user.email === 'fittconnect2@gmail.com' ? 'Admin' : 'Staff Designer',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+      });
+    }
+  }, [user, firestore]);
 
   useEffect(() => {
     if (isUserLoading) {
