@@ -70,7 +70,9 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
+      // Allow any signed-in user to view profiles to check roles and facilitate collaboration.
+      // This also resolves a recursive loop where isAdmin() depended on a rule that also called isAdmin().
+      allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId) && hasValidUserCreateData(userId);
       allow update: if (isExistingOwner(userId) && hasImmutableUserId()) || isAdmin();
@@ -128,8 +130,9 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      // A user can read, update (mark as read), and delete their own notifications.
-      allow read, update, delete: if isOwner(resource.data.userId);
+      // Admins can read all notifications. Users can read, update, and delete their own.
+      // This rule requires a client-side query with `where('userId', '==', request.auth.uid)` for non-admins.
+      allow read, update, delete: if isAdmin() || isOwner(resource.data.userId);
       // Any signed-in user can create a notification for someone else.
       allow create: if isSignedIn();
     }
