@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { useMemo, useState } from 'react';
-import { collection, orderBy, query, doc, setDoc } from 'firebase/firestore';
-import { PlusCircle } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { PlusCircle, Loader2 } from 'lucide-react';
 
-import { useCollection, useFirestore } from '@/firebase';
-import type { Task } from '@/lib/definitions';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import type { Task, Project } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -28,10 +31,34 @@ import { Button } from '@/components/ui/button';
 import { DesignForm } from './design-form';
 import { ScrollArea } from './ui/scroll-area';
 import { TaskForm } from './task-form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type TaskStatus = 'Todo' | 'In Progress' | 'Done';
 
 const COLUMNS: TaskStatus[] = ['Todo', 'In Progress', 'Done'];
+
+const taskDetailSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters.'),
+  description: z.string().optional(),
+  projectId: z.string().min(1, 'Please select a project.'),
+});
+type TaskDetailValues = z.infer<typeof taskDetailSchema>;
 
 function TaskCard({ task, onTaskClick, onTaskDoubleClick }: { task: Task & { id: string }, onTaskClick: (task: Task & { id: string }) => void, onTaskDoubleClick: (task: Task & { id: string }) => void }) {
     const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -75,12 +102,14 @@ function TaskBoardSkeleton() {
 
 export function TaskBoard() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const [tasks, setTasks] = useState<(Task & { id: string })[]>([]);
   const [selectedTask, setSelectedTask] = useState<(Task & { id: string }) | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isAddDesignSheetOpen, setIsAddDesignSheetOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<(Task & { id: string }) | null>(null);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
 
   const tasksQuery = useMemo(() => {
     const collRef = collection(firestore, 'tasks');
@@ -89,11 +118,57 @@ export function TaskBoard() {
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
 
-  React.useEffect(() => {
+  const projectsQuery = useMemo(() => {
+    if (!user) return null;
+    const collRef = collection(firestore, 'projects');
+    return query(collRef, orderBy('name', 'asc'));
+  }, [firestore, user]);
+
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
+
+  const form = useForm<TaskDetailValues>({
+    resolver: zodResolver(taskDetailSchema),
+  });
+
+  useEffect(() => {
     if (fetchedTasks) {
         setTasks(fetchedTasks);
     }
   }, [fetchedTasks]);
+
+  useEffect(() => {
+    if (selectedTask) {
+        form.reset({
+            title: selectedTask.title,
+            description: selectedTask.description || '',
+            projectId: selectedTask.projectId,
+        });
+    }
+  }, [selectedTask, form]);
+  
+  const onDetailSubmit = async (values: TaskDetailValues) => {
+    if (!selectedTask) return;
+
+    const taskRef = doc(firestore, 'tasks', selectedTask.id);
+    const selectedProject = projects?.find(p => p.id === values.projectId);
+
+    try {
+        await setDoc(taskRef, {
+            ...values,
+            projectName: selectedProject?.name || '',
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+        
+        // Optimistically update local state
+        setTasks(prevTasks => prevTasks.map(t => t.id === selectedTask.id ? { ...t, ...values, projectName: selectedProject?.name || '' } as Task & {id: string} : t));
+        setSelectedTask(prev => prev ? { ...prev, ...values, projectName: selectedProject?.name || '' } as Task & {id: string} : null);
+
+        setIsEditingDetails(false);
+    } catch (error) {
+        console.error("Failed to update task", error);
+    }
+  };
+
 
   const tasksByColumn = useMemo(() => {
     const grouped: Record<TaskStatus, (Task & { id: string })[]> = {
@@ -146,6 +221,14 @@ export function TaskBoard() {
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
+  
+  const handleDialogClose = (isOpen: boolean) => {
+    setIsDetailsDialogOpen(isOpen);
+    if (!isOpen) {
+      setIsEditingDetails(false); // Reset edit state on close
+    }
+  };
+
 
   if (isLoadingTasks) {
     return <TaskBoardSkeleton />;
@@ -170,30 +253,98 @@ export function TaskBoard() {
         ))}
       </div>
 
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+      <Dialog open={isDetailsDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-lg">
             {selectedTask && (
-                <>
+              !isEditingDetails ? (
+                <div onClick={() => setIsEditingDetails(true)} className="group cursor-pointer">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl">{selectedTask.title}</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-2xl group-hover:text-primary">{selectedTask.title}</DialogTitle>
+                        <DialogDescription className="group-hover:text-primary/80">
                             In project: {selectedTask.projectName}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 text-sm text-muted-foreground">
-                        <p>{selectedTask.description || 'No description for this task.'}</p>
+                    <div className="py-4 text-sm text-muted-foreground min-h-[6rem]">
+                        <p className="group-hover:text-primary/80">{selectedTask.description || 'No description provided. Click to add one.'}</p>
                     </div>
                     <DialogFooter className="sm:justify-between">
-                         <Button onClick={() => {
+                         <Button onClick={(e) => {
+                            e.stopPropagation();
                             setIsDetailsDialogOpen(false);
-                            // timeout to prevent issues with multiple modals/sheets
                             setTimeout(() => setIsAddDesignSheetOpen(true), 150);
                         }}>
                            <PlusCircle className="mr-2 h-4 w-4" /> Add Design Repo
                         </Button>
-                        <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>Close</Button>
+                        <Button variant="outline" onClick={(e) => { e.stopPropagation(); handleDialogClose(false)}}>Close</Button>
                     </DialogFooter>
-                </>
+                </div>
+              ) : (
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onDetailSubmit)} className="space-y-4">
+                        <DialogHeader>
+                            <FormField
+                                control={form.control}
+                                name="title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Title</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0" />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </DialogHeader>
+                        
+                        <div className="space-y-4">
+                             <FormField
+                                control={form.control}
+                                name="projectId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Project</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingProjects}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        {projects?.map(project => (
+                                            <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Add a description..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+              )
             )}
         </DialogContent>
       </Dialog>
