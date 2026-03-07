@@ -206,7 +206,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
 
       {/* View Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 data-[state=closed]:duration-0">
+        <DialogContent className="sm:max-w-3xl p-0">
           {designToView ? (
             <>
               <DialogHeader className="p-6 pb-0">
@@ -273,7 +273,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="data-[state=closed]:duration-0">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
