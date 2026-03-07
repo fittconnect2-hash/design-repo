@@ -147,17 +147,21 @@ export function TaskBoard() {
     if (!user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
-  const { data: currentUserProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: currentUserProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
   
   const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
   const isAdmin = useMemo(() => isSuperAdminByEmail || currentUserProfile?.role === 'Admin', [isSuperAdminByEmail, currentUserProfile]);
 
   const tasksQuery = useMemo(() => {
-    if (!user) return null;
+    if (!user || isUserProfileLoading) return null; // Wait until admin status is known.
     const collRef = collection(firestore, 'tasks');
-    // All users, including admins, will now only see tasks assigned to them to ensure stability.
+    if (isAdmin) {
+      // Admin sees all tasks.
+      return query(collRef, orderBy('createdAt', 'desc'));
+    }
+    // Staff Designer sees only their tasks.
     return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
-  }, [firestore, user]);
+  }, [firestore, user, isAdmin, isUserProfileLoading]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -273,7 +277,7 @@ export function TaskBoard() {
     const taskToMove = tasks.find(t => t.id === taskId);
     if (taskToMove && taskToMove.status !== status) {
         // Optimistic update
-        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status } : t));
+        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status, updatedAt: new Date() } : t));
         
         // Firestore update
         const taskRef = doc(firestore, 'tasks', taskId);
@@ -286,15 +290,13 @@ export function TaskBoard() {
                 const admins = users.filter(u => u.role === 'Admin' || u.email === 'fittconnect2@gmail.com');
                 const uniqueAdmins = [...new Map(admins.map(item => [item.id, item])).values()];
                 
-                const isCurrentUserAdmin = uniqueAdmins.some(admin => admin.id === currentUserProfile.id);
-
-                if (!isCurrentUserAdmin) {
-                    const notificationPromises = uniqueAdmins.map(admin => {
-                        if (!admin.id) return null;
-                        const notificationRef = doc(collection(firestore, 'users', admin.id, 'notifications'));
+                if (!isAdmin) {
+                    const notificationPromises = uniqueAdmins.map(adminUser => {
+                        if (!adminUser.id) return null;
+                        const notificationRef = doc(collection(firestore, 'users', adminUser.id, 'notifications'));
                         const notificationData: Omit<Notification, 'createdAt'> = {
                             id: notificationRef.id,
-                            userId: admin.id,
+                            userId: adminUser.id,
                             title: 'Task Updated',
                             message: `'${taskToMove.title}' was moved to ${status} by ${currentUserProfile.displayName}.`,
                             link: `/tasks/${taskToMove.id}`,
@@ -311,7 +313,7 @@ export function TaskBoard() {
 
         } catch (error) {
             // Revert optimistic update on error
-            setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status: taskToMove.status } : t));
+            setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status: taskToMove.status, updatedAt: taskToMove.updatedAt } : t));
             console.error("Failed to update task status:", error);
         }
     }
@@ -346,7 +348,7 @@ export function TaskBoard() {
   };
 
 
-  if (isLoadingTasks) {
+  if (isLoadingTasks || isUserProfileLoading) {
     return <TaskBoardSkeleton />;
   }
 
