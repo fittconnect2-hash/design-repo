@@ -1,14 +1,22 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { collection, orderBy, query } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import type { Design } from '@/lib/definitions';
+import type { Design, Project } from '@/lib/definitions';
 import { DesignsTable } from '@/components/designs-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddDesignButton } from '@/components/add-design-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
 function DesignsPageSkeleton() {
   return (
@@ -26,6 +34,7 @@ function DesignsPageSkeleton() {
 export default function DesignsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
@@ -35,13 +44,31 @@ export default function DesignsPage() {
 
   const { data: designs, isLoading: isLoadingDesigns } = useCollection<Design & { id: string }>(designsQuery);
 
-  const isLoading = isUserLoading || (user && isLoadingDesigns);
+  const projectsQuery = useMemo(() => {
+    if (!user) return null;
+    const collRef = collection(firestore, 'users', user.uid, 'projects');
+    return query(collRef, orderBy('name', 'asc'));
+  }, [firestore, user]);
+
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
+
+  const filteredDesigns = useMemo(() => {
+    if (!designs) return [];
+    if (selectedProjectId === 'all') {
+      return designs;
+    }
+    return designs.filter(design => design.projectId === selectedProjectId);
+  }, [designs, selectedProjectId]);
+
+
+  const isLoading = isUserLoading || (user && (isLoadingDesigns || isLoadingProjects));
 
   if (isLoading) {
     return <DesignsPageSkeleton />;
   }
   
   const hasDesigns = designs && designs.length > 0;
+  const hasProjects = projects && projects.length > 0;
 
   return (
     <div className="space-y-6">
@@ -52,10 +79,32 @@ export default function DesignsPage() {
         </div>
         <AddDesignButton buttonText="Add Design" />
       </div>
+      
+      {hasDesigns && hasProjects && (
+        <div className="flex items-center gap-4">
+          <div className="w-full max-w-xs space-y-2">
+            <Label htmlFor="project-filter">Filter by Project</Label>
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger id="project-filter">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {projects.map(project => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
 
       {hasDesigns ? (
         <Card>
-          <DesignsTable designs={designs || []} />
+          <DesignsTable designs={filteredDesigns || []} />
         </Card>
       ) : (
          <Card className="flex flex-col items-center justify-center py-20">
