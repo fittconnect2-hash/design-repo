@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { ShareProjectsButton } from '@/components/share-projects-button';
 
 function DesignsPageSkeleton() {
   return (
@@ -36,6 +35,7 @@ export default function DesignsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
@@ -55,11 +55,19 @@ export default function DesignsPage() {
 
   const filteredDesigns = useMemo(() => {
     if (!designs) return [];
-    if (selectedProjectId === 'all') {
-      return designs;
+    let tempDesigns = designs;
+    
+    if (selectedProjectId !== 'all') {
+      tempDesigns = tempDesigns.filter(design => design.projectId === selectedProjectId);
     }
-    return designs.filter(design => design.projectId === selectedProjectId);
-  }, [designs, selectedProjectId]);
+
+    if (statusFilter !== 'all') {
+      const isPublic = statusFilter === 'public';
+      tempDesigns = tempDesigns.filter(design => (design.isPublic ?? false) === isPublic);
+    }
+    
+    return tempDesigns;
+  }, [designs, selectedProjectId, statusFilter]);
 
 
   const isLoading = isUserLoading || (user && (isLoadingDesigns || isLoadingProjects));
@@ -79,26 +87,40 @@ export default function DesignsPage() {
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
         <div className="flex items-center gap-2">
-          {user && <ShareProjectsButton userId={user.uid} />}
           <AddDesignButton buttonText="Add Design" />
         </div>
       </div>
       
-      {hasDesigns && hasProjects && (
+      {hasDesigns && (
         <div className="flex items-center gap-4">
-          <div className="w-full max-w-xs space-y-2">
-            <Label htmlFor="project-filter">Filter by Project</Label>
-            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-              <SelectTrigger id="project-filter">
-                <SelectValue placeholder="Select a project" />
+          {hasProjects && (
+            <div className="w-full max-w-xs space-y-2">
+              <Label htmlFor="project-filter">Filter by Project</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger id="project-filter">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {projects.map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+           <div className="w-full max-w-xs space-y-2">
+            <Label htmlFor="status-filter">Filter by Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="status-filter">
+                <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
               </SelectContent>
             </Select>
           </div>

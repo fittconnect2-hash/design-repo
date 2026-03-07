@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 import type { Design, Project } from '@/lib/definitions';
@@ -54,6 +54,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { DesignForm } from './design-form';
+import { Checkbox } from './ui/checkbox';
 
 
 interface DesignsTableProps {
@@ -66,6 +67,9 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [designToTogglePublic, setDesignToTogglePublic] = React.useState<(Design & { id: string }) | null>(null);
+  
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+  const [bulkAction, setBulkAction] = React.useState<'public' | 'private' | null>(null);
 
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
@@ -75,6 +79,12 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
+  
+  const numSelected = React.useMemo(() => Object.values(rowSelection).filter(Boolean).length, [rowSelection]);
+  
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [designs]);
 
   const projectsQuery = React.useMemo(() => {
     if (!auth.currentUser) return null;
@@ -160,6 +170,55 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
         handlePublicConfirmOpenChange(false);
     }
   };
+  
+  const handleBulkUpdateConfirm = async () => {
+    if (!auth.currentUser || bulkAction === null) return;
+
+    const isPublic = bulkAction === 'public';
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+
+    const updatePromises = selectedIds.map(id => {
+        const designRef = doc(firestore, 'users', auth.currentUser!.uid, 'designs', id);
+        return setDoc(designRef, { isPublic }, { merge: true });
+    });
+
+    try {
+        await Promise.all(updatePromises);
+        toast({
+            title: 'Success',
+            description: `${selectedIds.length} designs have been updated to ${bulkAction}.`,
+        });
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to update one or more designs. You may not have permission.',
+        });
+        console.error("Bulk update failed:", error);
+    } finally {
+        setBulkAction(null);
+        setRowSelection({});
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked === true) {
+      const newSelection = designs.reduce((acc, design) => {
+        acc[design.id] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      setRowSelection(newSelection);
+    } else {
+      setRowSelection({});
+    }
+  };
+
+  const handleRowSelect = (designId: string, checked: boolean) => {
+    setRowSelection(prev => ({
+      ...prev,
+      [designId]: checked,
+    }));
+  };
 
   const handleOpenViewModal = (design: Design & { id: string }) => {
     setDesignToView(design);
@@ -213,12 +272,56 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     }
   };
 
+  const handleCopyPublicLink = () => {
+    if (!auth.currentUser) return;
+    const url = `${window.location.origin}/share/${auth.currentUser.uid}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: 'Public Link Copied!',
+        description: 'A shareable link to all your public designs has been copied.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy share link:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not copy the share link.',
+      });
+    });
+  };
+
   return (
     <>
+      {!isPublic && numSelected > 0 && (
+        <div className="flex items-center gap-4 p-2.5 bg-muted/50 border-b">
+          <p className="text-sm text-muted-foreground px-2">{numSelected} selected</p>
+          <Button size="sm" variant="outline" onClick={() => setBulkAction('public')}>
+            <Globe className="mr-2 h-4 w-4" /> Make Public
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setBulkAction('private')}>
+            <Lock className="mr-2 h-4 w-4" /> Make Private
+          </Button>
+          <div className="ml-auto">
+             <Button size="sm" variant="outline" onClick={handleCopyPublicLink}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Copy Public Link
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              {!isPublic && (
+                <TableHead className="w-[40px] px-3">
+                  <Checkbox
+                    checked={numSelected > 0 && numSelected === designs.length}
+                    onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                    aria-label="Select all rows"
+                  />
+                </TableHead>
+              )}
               <TableHead className="w-[80px] hidden sm:table-cell">Image</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="hidden md:table-cell">Project</TableHead>
@@ -232,7 +335,16 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
           <TableBody>
             {designs && designs.length > 0 ? (
               designs.map(design => (
-                <TableRow key={design.id}>
+                <TableRow key={design.id} data-state={!isPublic && rowSelection[design.id] ? 'selected' : undefined}>
+                  {!isPublic && (
+                     <TableCell className="px-3">
+                      <Checkbox
+                        checked={rowSelection[design.id] || false}
+                        onCheckedChange={(checked) => handleRowSelect(design.id, Boolean(checked))}
+                        aria-label={`Select row for ${design.name}`}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="hidden sm:table-cell">
                     <Image
                       src={design.imageUrl || `https://picsum.photos/seed/${design.id}/80/60`}
@@ -316,7 +428,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isPublic ? 6 : 8} className="h-24 text-center">
+                <TableCell colSpan={isPublic ? 6 : 9} className="h-24 text-center">
                   No designs to display.
                 </TableCell>
               </TableRow>
@@ -465,6 +577,23 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                   Confirm
                 </AlertDialogAction>
               </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={!!bulkAction} onOpenChange={(open) => !open && setBulkAction(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                    This will change the visibility for {numSelected} selected designs.
+                    Do you want to make them {bulkAction}?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setBulkAction(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkUpdateConfirm}>
+                    Confirm
+                    </AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </>
