@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Design } from '@/lib/definitions';
 import { useMemo } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AddDesignButton } from '@/components/add-design-button';
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
@@ -52,7 +53,10 @@ export default function Home() {
         </Card>
       ) : hasDesigns ? (
         <div className="space-y-4">
-          <h1 className="text-3xl font-headline font-bold tracking-tight">Your Design Projects</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-headline font-bold tracking-tight">Your Design Projects</h1>
+            <AddDesignButton />
+          </div>
             <Accordion type="single" collapsible className="w-full" defaultValue={Object.keys(groupedDesigns)[0]}>
               {Object.entries(groupedDesigns).map(([projectName, projectDesigns]) => (
                 <AccordionItem value={projectName} key={projectName}>
@@ -68,8 +72,9 @@ export default function Home() {
         </div>
       ) : (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Your Design Projects</CardTitle>
+            <AddDesignButton />
           </CardHeader>
           <CardContent>
             <DesignsTable designs={[]} />
