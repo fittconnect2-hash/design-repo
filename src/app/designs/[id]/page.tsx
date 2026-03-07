@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design, Project } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -66,26 +66,25 @@ function DesignDetailsSkeleton() {
 
 export default function DesignDetailsPage() {
   const params = useParams<{ id: string }>();
-  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const { toast } = useToast();
 
   const designRef = useMemo(() => {
-    if (!user || !params.id) return null;
-    return doc(firestore, 'users', user.uid, 'designs', params.id);
-  }, [firestore, user, params.id]);
+    if (!params.id) return null;
+    return doc(firestore, 'designs', params.id);
+  }, [firestore, params.id]);
 
   const { data: design, isLoading: isDesignLoading } = useDoc<Design & { id: string }>(designRef);
 
   const projectRef = useMemo(() => {
-    if (!user || !design?.projectId) return null;
-    return doc(firestore, 'users', user.uid, 'projects', design.projectId);
-  }, [firestore, user, design]);
+    if (!design?.projectId) return null;
+    return doc(firestore, 'projects', design.projectId);
+  }, [firestore, design]);
   
   const { data: project, isLoading: isProjectLoading } = useDoc<Project>(projectRef);
 
-  const isLoading = isUserLoading || isDesignLoading || (design && isProjectLoading);
+  const isLoading = isDesignLoading || (design && isProjectLoading);
 
   const handleShare = () => {
     const url = window.location.href;

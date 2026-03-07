@@ -53,9 +53,9 @@ export function DesignCard({ design }: DesignCardProps) {
   const firestore = useFirestore();
 
   const projectRef = React.useMemo(() => {
-    if (!auth.currentUser || !design.projectId) return null;
-    return doc(firestore, 'users', auth.currentUser.uid, 'projects', design.projectId);
-  }, [firestore, auth.currentUser, design.projectId]);
+    if (!design.projectId) return null;
+    return doc(firestore, 'projects', design.projectId);
+  }, [firestore, design.projectId]);
 
   const { data: project } = useDoc<Project>(projectRef);
 
@@ -87,7 +87,7 @@ export function DesignCard({ design }: DesignCardProps) {
 
   const handleDeleteConfirm = () => {
     if (auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', design.id);
+      const designRef = doc(firestore, 'designs', design.id);
       
       deleteDoc(designRef)
         .then(() => {

@@ -102,7 +102,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
 
   const handleDelete = async (design: Design & { id: string }) => {
     if (auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', design.id);
+      const designRef = doc(firestore, 'designs', design.id);
       
       deleteDoc(designRef)
         .then(() => {
@@ -130,7 +130,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   const handleTogglePublicConfirm = async () => {
     if (!designToTogglePublic || !auth.currentUser) return;
     
-    const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', designToTogglePublic.id);
+    const designRef = doc(firestore, 'designs', designToTogglePublic.id);
     const newPublicState = !designToTogglePublic.isPublic;
     
     const project = projectsProp?.find(p => p.id === designToTogglePublic.projectId);
@@ -175,7 +175,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
         const project = projectsProp?.find(p => p.id === designToUpdate.projectId);
         const projectName = project?.name || designToUpdate.projectName || '';
 
-        const designRef = doc(firestore, 'users', auth.currentUser!.uid, 'designs', id);
+        const designRef = doc(firestore, 'designs', id);
         return setDoc(designRef, { isPublic, projectName }, { merge: true });
     });
 

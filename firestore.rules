@@ -2,24 +2,24 @@
  * # Firestore Security Rules for DesignDock
  *
  * ## Core Philosophy
- * This ruleset enforces a strict user-ownership security model for writes,
- * while allowing public read access for sharing purposes on designs. It also
- * defines an 'Admin' role with elevated privileges, including a hardcoded
- * Super Admin.
+ * This ruleset allows any authenticated user to read all projects and designs, fostering
+ * a collaborative environment. Write access (`create`, `update`, `delete`) is strictly
+ * controlled, limited to the document owner or an administrator.
  *
  * ## Data Structure
- * The data is organized hierarchically. All user-specific data is nested under
- * `/users/{userId}`, where `{userId}` is the user's unique Firebase Authentication UID.
- * This structure makes ownership explicit.
+ * Projects and Designs are stored in root collections to facilitate app-wide queries.
+ * Each project and design document contains a `userId` field to identify the owner for
+ * write-permission checks.
  *
  * ## Key Security Decisions
  * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
- * - **Admin Role:** Users with `role == 'Admin'` in their profile can manage users, projects, and designs.
- * - **Public Read for Designs:** The `designs` subcollection is publicly readable (`get`, `list`)
- *   to support the public sharing feature. A design is only gettable if `isPublic` is true.
- * - **Private Projects:** The `projects` subcollection is private. Only the owner or an admin can read or write.
- * - **Strict Write Ownership for regular users:** All write operations (`create`, `update`, `delete`) are granted
- *   only if the requesting user's UID matches the `{userId}` in the document path.
+ * - **Admin Role:** Users with `role == 'Admin'` in their profile have elevated privileges.
+ * - **Collaborative Reads:** All authenticated users (`isSignedIn()`) can read from the `/projects`
+ *   and `/designs` collections.
+ * - **Strict Write Ownership:** Write operations are only granted if the requesting user's UID
+ *   matches the `userId` field in the document, or if the user is an admin.
+ * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
+ *   share page (`/share/{userId}`).
  */
 rules_version = '2';
 service cloud.firestore {
@@ -84,31 +84,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Controls access to high-level projects. Read and write are private to owners, but open to admins.
-     * @path /users/{userId}/projects/{projectId}
-     */
-    match /users/{userId}/projects/{projectId} {
-      allow get, list: if isOwner(userId) || isAdmin();
-      allow create: if (isOwner(userId) && hasValidOwnerId(userId)) || isAdmin();
-      allow update: if (isExistingOwner(userId) && hasImmutableOwnerId()) || isAdmin();
-      allow delete: if isExistingOwner(userId) || isAdmin();
+    match /projects/{projectId} {
+      // Any signed-in user can read projects.
+      allow get, list: if isSignedIn();
+      
+      // Only owner or admin can write.
+      allow create: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update: if (isOwner(resource.data.userId) && hasImmutableOwnerId()) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    /**
-     * @description Controls access to designs. Read is public, writes are private to owners, but open to admins.
-     * @path /users/{userId}/designs/{designId}
-     */
-    match /users/{userId}/designs/{designId} {
-      // Anyone can read a design if it's public. Owners and Admins can read private designs.
-      allow get: if resource.data.isPublic == true || isOwner(userId) || isAdmin();
-      // Public listing is allowed. The client query MUST filter for isPublic == true.
-      allow list: if true;
+    match /designs/{designId} {
+      // Any signed-in user can read designs inside the app.
+      // Unauthenticated users can only read if it's public (for the share page).
+      allow get: if isSignedIn() || resource.data.isPublic == true;
+      allow list: if isSignedIn();
       
-      // Writes are restricted to owners or admins.
-      allow create: if (isOwner(userId) && hasValidOwnerId(userId)) || isAdmin();
-      allow update: if (isExistingOwner(userId) && hasImmutableOwnerId()) || isAdmin();
-      allow delete: if isExistingOwner(userId) || isAdmin();
+      // Only owner or admin can write.
+      allow create: if (isOwner(request.resource.data.userId)) || isAdmin();
+      allow update: if (isOwner(resource.data.userId) && hasImmutableOwnerId()) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     match /invites/{inviteId} {

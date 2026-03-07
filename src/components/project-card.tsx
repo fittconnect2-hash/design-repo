@@ -58,7 +58,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   const handleDeleteConfirm = () => {
     if (auth.currentUser) {
-      const projectRef = doc(firestore, 'users', auth.currentUser.uid, 'projects', project.id);
+      const projectRef = doc(firestore, 'projects', project.id);
       
       deleteDoc(projectRef)
         .then(() => {

@@ -34,8 +34,8 @@ export default function SharePage() {
 
   const designsQuery = useMemo(() => {
     if (!userId) return null;
-    const collRef = collection(firestore, 'users', userId, 'designs');
-    return query(collRef, where('isPublic', '==', true));
+    const collRef = collection(firestore, 'designs');
+    return query(collRef, where('isPublic', '==', true), where('userId', '==', userId));
   }, [firestore, userId]);
 
   const { data: designs, isLoading } = useCollection<Design & { id: string }>(designsQuery);

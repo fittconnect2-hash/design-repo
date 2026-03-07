@@ -45,7 +45,7 @@ export default function ProjectsPage() {
 
   const projectsQuery = useMemo(() => {
     if (!user) return null;
-    const collRef = collection(firestore, 'users', user.uid, 'projects');
+    const collRef = collection(firestore, 'projects');
     return query(collRef, orderBy('updatedAt', 'desc'));
   }, [firestore, user]);
 

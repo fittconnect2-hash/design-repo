@@ -243,18 +243,14 @@
         }
       },
       {
-        "path": "/users/{userId}/projects/{projectId}",
+        "path": "/projects/{projectId}",
         "definition": {
           "entityName": "Project",
           "schema": {
             "$ref": "#/backend/entities/Project"
           },
-          "description": "Stores high-level projects, nested under the owning user. The document ID '{projectId}' uniquely identifies a project for that user.",
+          "description": "Stores high-level projects in a root collection.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user who owns the project."
-            },
             {
               "name": "projectId",
               "description": "The unique identifier for the project."
@@ -263,18 +259,14 @@
         }
       },
       {
-        "path": "/users/{userId}/designs/{designId}",
+        "path": "/designs/{designId}",
         "definition": {
           "entityName": "Design",
           "schema": {
             "$ref": "#/backend/entities/Design"
           },
-          "description": "Stores individual designs, nested under the owning user. The document ID '{designId}' uniquely identifies a design for that user.",
+          "description": "Stores individual designs in a root collection.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user who owns the design."
-            },
             {
               "name": "designId",
               "description": "The unique identifier for the design."
@@ -299,6 +291,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure separates Users, Projects, and Designs into distinct collections. User data is at the root under `/users/{userId}`. Both Projects and Designs are stored in subcollections under the user who owns them (`/users/{userId}/projects/{projectId}` and `/users/{userId}/designs/{designId}`). This hierarchical structure ensures that all of a user's data is logically grouped and enables simple, path-based security rules. By storing the `userId` field within every Project and Design document (denormalization), we achieve Authorization Independence, allowing security rules to verify ownership without costly cross-document `get()` calls. This design supports secure queries (QAPs), as a user can only list projects or designs under their own user path, naturally filtering the data by owner. The `invites` collection is at the root to allow unauthenticated users to read a specific invite during the signup process."
+    "reasoning": "The Firestore structure separates Users, Projects, Designs, and Invites into distinct root-level collections. This flat structure facilitates efficient, app-wide queries, allowing any authenticated user to view all projects and designs to foster collaboration. User-specific data is stored in `/users/{userId}`. Write access to projects and designs is controlled by a `userId` field within each document, ensuring that only the owner or an administrator can modify content. This design supports secure, independent authorization for write operations while enabling open read access for a collaborative workspace."
   }
 }

@@ -26,7 +26,7 @@ import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -54,14 +54,14 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSheet = view === 'sheet';
   const firestore = useFirestore();
-  const auth = useAuth();
+  const { user } = useUser();
   const router = useRouter();
 
   const projectsQuery = useMemo(() => {
-    if (!auth.currentUser) return null;
-    const collRef = collection(firestore, 'users', auth.currentUser.uid, 'projects');
+    if (!user) return null;
+    const collRef = collection(firestore, 'projects');
     return query(collRef, orderBy('name', 'asc'));
-  }, [firestore, auth.currentUser]);
+  }, [firestore, user]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
 
@@ -82,21 +82,21 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   });
   
   const onSubmit = async (values: DesignFormValues) => {
-    if (!auth.currentUser) {
+    if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
 
     setIsSubmitting(true);
 
-    const { uid } = auth.currentUser;
+    const { uid } = user;
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
     
     const selectedProject = projects?.find(p => p.id === values.projectId);
     const projectName = selectedProject?.name || '';
 
     try {
-      const designCollectionRef = collection(firestore, 'users', uid, 'designs');
+      const designCollectionRef = collection(firestore, 'designs');
 
       if (design) {
         // Update existing design

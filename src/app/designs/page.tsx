@@ -40,7 +40,7 @@ export default function DesignsPage() {
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
-    const collRef = collection(firestore, 'users', user.uid, 'designs');
+    const collRef = collection(firestore, 'designs');
     return query(collRef, orderBy('updatedAt', 'desc'));
   }, [firestore, user]);
 
@@ -48,7 +48,7 @@ export default function DesignsPage() {
 
   const projectsQuery = useMemo(() => {
     if (!user) return null;
-    const collRef = collection(firestore, 'users', user.uid, 'projects');
+    const collRef = collection(firestore, 'projects');
     return query(collRef, orderBy('name', 'asc'));
   }, [firestore, user]);
 

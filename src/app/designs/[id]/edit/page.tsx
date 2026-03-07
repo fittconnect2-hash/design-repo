@@ -5,7 +5,7 @@ import { notFound, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,19 +38,16 @@ function EditDesignSkeleton() {
 
 export default function EditDesignPage() {
   const params = useParams<{ id: string }>();
-  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const designRef = useMemo(() => {
-    if (!user || !params.id) return null;
-    return doc(firestore, 'users', user.uid, 'designProjects', params.id);
-  }, [firestore, user, params.id]);
+    if (!params.id) return null;
+    return doc(firestore, 'designs', params.id);
+  }, [firestore, params.id]);
 
   const { data: design, isLoading: isDesignLoading } = useDoc<Design>(designRef);
 
-  const isLoading = isUserLoading || isDesignLoading;
-
-  if (isLoading) {
+  if (isDesignLoading) {
     return <EditDesignSkeleton />;
   }
 

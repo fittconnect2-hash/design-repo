@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Project } from '@/lib/definitions';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, Timestamp } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,7 @@ export function ProjectForm({ project, view = 'page', onSuccess }: ProjectFormPr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSheet = view === 'sheet';
   const firestore = useFirestore();
-  const auth = useAuth();
+  const { user } = useUser();
   const router = useRouter();
 
   const defaultValues: Partial<ProjectFormValues> = {
@@ -67,13 +67,13 @@ export function ProjectForm({ project, view = 'page', onSuccess }: ProjectFormPr
   });
   
   const onSubmit = async (values: ProjectFormValues) => {
-    if (!auth.currentUser) {
+    if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
       return;
     }
 
     setIsSubmitting(true);
-    const { uid } = auth.currentUser;
+    const { uid } = user;
 
     const dataPayload = {
       userId: uid,
@@ -85,7 +85,7 @@ export function ProjectForm({ project, view = 'page', onSuccess }: ProjectFormPr
     };
 
     try {
-      const projectCollectionRef = collection(firestore, 'users', uid, 'projects');
+      const projectCollectionRef = collection(firestore, 'projects');
       
       if (project) {
         // Update existing project
