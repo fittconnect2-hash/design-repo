@@ -61,6 +61,8 @@ export type Task = {
   description?: string;
   status: 'Todo' | 'In Progress' | 'Done';
   userId: string; // creator
+  assignedToId?: string;
+  assignedToName?: string;
   createdAt: any;
   updatedAt: any;
 }

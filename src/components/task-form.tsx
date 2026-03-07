@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import type { Task, Project } from '@/lib/definitions';
+import type { Task, Project, UserProfile } from '@/lib/definitions';
 import { Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useUser, useFirestore, useCollection } from '@/firebase';
@@ -29,6 +29,7 @@ const formSchema = z.object({
   projectId: z.string().min(1, { message: 'Please select a project.' }),
   title: z.string().min(2, { message: 'Title must be at least 2 characters.' }),
   description: z.string().optional(),
+  assignedToId: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -55,10 +56,17 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
 
+  const usersQuery = useMemo(() => {
+    if(!user) return null;
+    return query(collection(firestore, 'users'), orderBy('displayName', 'asc'));
+  }, [firestore, user]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile & { id: string }>(usersQuery);
+
   const defaultValues: Partial<TaskFormValues> = {
     projectId: task?.projectId || '',
     title: task?.title || '',
     description: task?.description || '',
+    assignedToId: task?.assignedToId || '',
   };
 
   const form = useForm<TaskFormValues>({
@@ -78,6 +86,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
     const { uid } = user;
     const selectedProject = projects?.find(p => p.id === values.projectId);
     const projectName = selectedProject?.name || '';
+    const assignedUser = users?.find(u => u.id === values.assignedToId);
+    const assignedToName = assignedUser?.displayName || '';
 
     try {
       const taskCollectionRef = collection(firestore, 'tasks');
@@ -88,6 +98,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
         const dataToUpdate = {
           ...values,
           projectName,
+          assignedToId: values.assignedToId || null,
+          assignedToName: assignedToName || null,
           updatedAt: serverTimestamp(),
         };
         await setDoc(taskRef, dataToUpdate, { merge: true });
@@ -101,6 +113,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
           projectName,
           userId: uid,
           status: 'Todo' as const,
+          assignedToId: values.assignedToId || null,
+          assignedToName: assignedToName || null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -159,6 +173,29 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
                 </FormItem>
               )}
             />
+             <FormField
+                control={form.control}
+                name="assignedToId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Assign to</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingUsers}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder={isLoadingUsers ? "Loading users..." : "Unassigned"} />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        <SelectItem value="">Unassigned</SelectItem>
+                        {users?.map(user => (
+                            <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
             <FormField
               control={form.control}
               name="description"

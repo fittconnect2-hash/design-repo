@@ -6,10 +6,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, User } from 'lucide-react';
 
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import type { Task, Project } from '@/lib/definitions';
+import type { Task, Project, UserProfile } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { DesignForm } from './design-form';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { TaskForm } from './task-form';
 import {
   Form,
@@ -48,17 +48,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 type TaskStatus = 'Todo' | 'In Progress' | 'Done';
 
 const COLUMNS: TaskStatus[] = ['Todo', 'In Progress', 'Done'];
 
-const taskDetailSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters.'),
-  description: z.string().optional(),
-  projectId: z.string().min(1, 'Please select a project.'),
-});
-type TaskDetailValues = z.infer<typeof taskDetailSchema>;
+const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1 && names[1]) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name[0].toUpperCase();
+};
 
 function TaskCard({ task, onTaskClick, onTaskDoubleClick }: { task: Task & { id: string }, onTaskClick: (task: Task & { id: string }) => void, onTaskDoubleClick: (task: Task & { id: string }) => void }) {
     const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -74,11 +78,37 @@ function TaskCard({ task, onTaskClick, onTaskDoubleClick }: { task: Task & { id:
             onDoubleClick={() => onTaskDoubleClick(task)}
             className="mb-4 p-4 cursor-grab active:cursor-grabbing hover:bg-accent transition-colors"
         >
-            <p className="font-semibold">{task.title}</p>
-            <p className="text-sm text-muted-foreground">{task.projectName}</p>
+            <div className="flex justify-between items-start">
+                <div className="flex-1 pr-2">
+                    <p className="font-semibold">{task.title}</p>
+                    <p className="text-sm text-muted-foreground">{task.projectName}</p>
+                </div>
+                {task.assignedToName && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{getInitials(task.assignedToName)}</AvatarFallback>
+                                </Avatar>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Assigned to {task.assignedToName}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+            </div>
         </Card>
     );
 }
+
+const taskDetailSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters.'),
+  description: z.string().optional(),
+  projectId: z.string().min(1, 'Please select a project.'),
+  assignedToId: z.string().optional(),
+});
+type TaskDetailValues = z.infer<typeof taskDetailSchema>;
 
 
 function TaskBoardSkeleton() {
@@ -126,6 +156,12 @@ export function TaskBoard() {
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
 
+  const usersQuery = useMemo(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'users'), orderBy('displayName', 'asc'));
+  }, [firestore, user]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile & { id: string }>(usersQuery);
+
   const form = useForm<TaskDetailValues>({
     resolver: zodResolver(taskDetailSchema),
   });
@@ -142,6 +178,7 @@ export function TaskBoard() {
             title: selectedTask.title,
             description: selectedTask.description || '',
             projectId: selectedTask.projectId,
+            assignedToId: selectedTask.assignedToId || '',
         });
     }
   }, [selectedTask, form]);
@@ -151,17 +188,27 @@ export function TaskBoard() {
 
     const taskRef = doc(firestore, 'tasks', selectedTask.id);
     const selectedProject = projects?.find(p => p.id === values.projectId);
+    const assignedUser = users?.find(u => u.id === values.assignedToId);
+    const assignedToName = assignedUser?.displayName || '';
 
     try {
         await setDoc(taskRef, {
             ...values,
             projectName: selectedProject?.name || '',
+            assignedToId: values.assignedToId || null,
+            assignedToName: assignedToName || null,
             updatedAt: serverTimestamp(),
         }, { merge: true });
         
-        // Optimistically update local state
-        setTasks(prevTasks => prevTasks.map(t => t.id === selectedTask.id ? { ...t, ...values, projectName: selectedProject?.name || '' } as Task & {id: string} : t));
-        setSelectedTask(prev => prev ? { ...prev, ...values, projectName: selectedProject?.name || '' } as Task & {id: string} : null);
+        const optimisticUpdate = {
+            ...values,
+            projectName: selectedProject?.name || '',
+            assignedToId: values.assignedToId,
+            assignedToName: assignedToName,
+        };
+        
+        setTasks(prevTasks => prevTasks.map(t => t.id === selectedTask.id ? { ...t, ...optimisticUpdate } as Task & {id: string} : t));
+        setSelectedTask(prev => prev ? { ...prev, ...optimisticUpdate } as Task & {id: string} : null);
 
         setIsEditingDetails(false);
     } catch (error) {
@@ -264,8 +311,14 @@ export function TaskBoard() {
                             In project: {selectedTask.projectName}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 text-sm text-muted-foreground min-h-[6rem]">
-                        <p className="group-hover:text-primary/80">{selectedTask.description || 'No description provided. Click to add one.'}</p>
+                    <div className="py-4 space-y-4">
+                        <p className="text-sm text-muted-foreground min-h-[4rem] group-hover:text-primary/80">
+                            {selectedTask.description || 'No description provided. Click to add one.'}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-primary/80">
+                            <User className="h-4 w-4" />
+                            <span>{selectedTask.assignedToName ? `Assigned to ${selectedTask.assignedToName}` : 'Unassigned'}</span>
+                        </div>
                     </div>
                     <DialogFooter className="sm:justify-between">
                          <Button onClick={(e) => {
@@ -329,6 +382,29 @@ export function TaskBoard() {
                                     <FormControl>
                                         <Textarea placeholder="Add a description..." {...field} />
                                     </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="assignedToId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Assign to</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingUsers}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={isLoadingUsers ? "Loading users..." : "Unassigned"} />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        <SelectItem value="">Unassigned</SelectItem>
+                                        {users?.map(user => (
+                                            <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                     </FormItem>
                                 )}

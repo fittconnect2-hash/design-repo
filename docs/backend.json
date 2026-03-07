@@ -332,6 +332,14 @@
           "type": "string",
           "description": "Reference to the User who created this task."
         },
+        "assignedToId": {
+          "type": "string",
+          "description": "ID of the user this task is assigned to."
+        },
+        "assignedToName": {
+          "type": "string",
+          "description": "Denormalized display name of the assigned user."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the task was created.",
