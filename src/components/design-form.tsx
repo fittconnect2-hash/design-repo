@@ -84,33 +84,37 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     const { uid } = auth.currentUser;
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
-    const baseData = {
-      ...values,
-      userId: uid,
-      tags: tagsArray,
-    };
-
     try {
       if (design) {
         // Update existing design
-        const currentVersion = design.version || '1.0';
-        const versionParts = currentVersion.split('.').map(part => parseInt(part, 10));
-        
-        let major = 1;
-        let minor = 0;
+        let newVersion: string;
+        const currentVersion = design.version;
 
-        if (versionParts.length > 0 && !isNaN(versionParts[0])) {
-            major = versionParts[0];
+        if (currentVersion && typeof currentVersion === 'string' && currentVersion.includes('.')) {
+            const versionParts = currentVersion.split('.').map(part => parseInt(part, 10));
+            const major = versionParts[0];
+            const minor = versionParts[1];
+
+            if (!isNaN(major) && !isNaN(minor)) {
+                newVersion = `${major}.${minor + 1}`;
+            } else {
+                newVersion = '1.0';
+            }
+        } else {
+            // If no version exists, or it's in a weird format, start it at 1.0
+            newVersion = '1.0';
         }
-        if (versionParts.length > 1 && !isNaN(versionParts[1])) {
-            minor = versionParts[1];
-        }
-        
-        const newVersion = `${major}.${minor + 1}`;
 
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
-          ...baseData,
+          name: values.name,
+          projectName: values.projectName,
+          description: values.description,
+          imageUrl: values.imageUrl,
+          figmaLink: values.figmaLink,
+          prototypeUrl: values.prototypeUrl,
+          tags: tagsArray,
+          userId: uid,
           version: newVersion,
           updatedAt: serverTimestamp(),
         };
@@ -123,7 +127,14 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
         const newDocRef = doc(collectionRef);
         const dataToCreate = {
-          ...baseData,
+          userId: uid,
+          name: values.name,
+          projectName: values.projectName,
+          description: values.description,
+          imageUrl: values.imageUrl,
+          figmaLink: values.figmaLink || '',
+          prototypeUrl: values.prototypeUrl || '',
+          tags: tagsArray,
           version: '1.0',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
