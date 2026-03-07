@@ -52,15 +52,6 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  React.useEffect(() => {
-    // When both modals are closed, this effect will run and ensure
-    // the `pointer-events` style is removed from the body, fixing the frozen UI.
-    if (!isViewModalOpen && !isDeleteModalOpen) {
-      document.body.style.pointerEvents = '';
-    }
-  }, [isViewModalOpen, isDeleteModalOpen]);
-
-
   const handleShare = (designId: string) => {
     const url = `${window.location.origin}/designs/${designId}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -125,6 +116,14 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleViewModalOpenChange = (isOpen: boolean) => {
     setIsViewModalOpen(isOpen);
     if (!isOpen) {
+      // THIS IS THE FIX:
+      // When the modal closes, we force the body's pointer-events back to 'auto'.
+      // This is wrapped in a timeout to ensure it runs *after* Radix's own (buggy)
+      // cleanup logic, winning the race condition.
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+      
       // Delay clearing data to allow for exit animation before content disappears
       setTimeout(() => {
         setDesignToView(null);
@@ -135,6 +134,11 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
+       // THIS IS THE FIX:
+      // Same logic for the delete modal.
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
       setDesignToDelete(null);
     }
   };
