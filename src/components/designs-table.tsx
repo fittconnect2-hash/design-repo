@@ -99,15 +99,6 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     return new Map(projects.map(p => [p.id, p.name]));
   }, [projects, designs, isPublic]);
 
-  React.useEffect(() => {
-    const isAnyModalOpen = isViewModalOpen || isEditSheetOpen || isDeleteModalOpen || isPublicConfirmOpen;
-    if (!isAnyModalOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
-    }
-  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen, isPublicConfirmOpen]);
-
   const handleDeleteConfirm = () => {
     if (designToDelete) {
       handleDelete(designToDelete);
@@ -192,22 +183,34 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
 
   const handleViewModalOpenChange = (isOpen: boolean) => {
     setIsViewModalOpen(isOpen);
-    if (!isOpen) setDesignToView(null);
+    if (!isOpen) {
+      setDesignToView(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
 
   const handleEditSheetOpenChange = (isOpen: boolean) => {
     setIsEditSheetOpen(isOpen);
-    if (!isOpen) setDesignToEdit(null);
+    if (!isOpen) {
+      setDesignToEdit(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
   
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
-    if (!isOpen) setDesignToDelete(null);
+    if (!isOpen) {
+      setDesignToDelete(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
 
   const handlePublicConfirmOpenChange = (isOpen: boolean) => {
     setIsPublicConfirmOpen(isOpen);
-    if (!isOpen) setDesignToTogglePublic(null);
+    if (!isOpen) {
+      setDesignToTogglePublic(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
 
   return (
