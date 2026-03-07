@@ -86,7 +86,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
     const { uid } = user;
     const selectedProject = projects?.find(p => p.id === values.projectId);
     const projectName = selectedProject?.name || '';
-    const assignedUser = users?.find(u => u.id === values.assignedToId);
+    const assignedToIdValue = values.assignedToId === 'unassigned' ? null : values.assignedToId || null;
+    const assignedUser = users?.find(u => u.id === assignedToIdValue);
     const assignedToName = assignedUser?.displayName || '';
 
     try {
@@ -98,8 +99,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
         const dataToUpdate = {
           ...values,
           projectName,
-          assignedToId: values.assignedToId || null,
-          assignedToName: assignedToName || null,
+          assignedToId: assignedToIdValue,
+          assignedToName: assignedToName,
           updatedAt: serverTimestamp(),
         };
         await setDoc(taskRef, dataToUpdate, { merge: true });
@@ -113,8 +114,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
           projectName,
           userId: uid,
           status: 'Todo' as const,
-          assignedToId: values.assignedToId || null,
-          assignedToName: assignedToName || null,
+          assignedToId: assignedToIdValue,
+          assignedToName: assignedToName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -186,7 +187,7 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {users?.map(user => (
                             <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
                         ))}

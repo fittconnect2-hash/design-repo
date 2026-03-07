@@ -188,22 +188,23 @@ export function TaskBoard() {
 
     const taskRef = doc(firestore, 'tasks', selectedTask.id);
     const selectedProject = projects?.find(p => p.id === values.projectId);
-    const assignedUser = users?.find(u => u.id === values.assignedToId);
+    const assignedToIdValue = values.assignedToId === 'unassigned' ? null : values.assignedToId || null;
+    const assignedUser = users?.find(u => u.id === assignedToIdValue);
     const assignedToName = assignedUser?.displayName || '';
 
     try {
         await setDoc(taskRef, {
             ...values,
             projectName: selectedProject?.name || '',
-            assignedToId: values.assignedToId || null,
-            assignedToName: assignedToName || null,
+            assignedToId: assignedToIdValue,
+            assignedToName: assignedToName,
             updatedAt: serverTimestamp(),
         }, { merge: true });
         
         const optimisticUpdate = {
             ...values,
             projectName: selectedProject?.name || '',
-            assignedToId: values.assignedToId,
+            assignedToId: assignedToIdValue,
             assignedToName: assignedToName,
         };
         
@@ -399,7 +400,7 @@ export function TaskBoard() {
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                        <SelectItem value="">Unassigned</SelectItem>
+                                        <SelectItem value="unassigned">Unassigned</SelectItem>
                                         {users?.map(user => (
                                             <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
                                         ))}
