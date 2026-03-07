@@ -131,7 +131,12 @@ function TaskBoardSkeleton() {
   );
 }
 
-export function TaskBoard() {
+interface TaskBoardProps {
+  filter: string;
+  userId?: string;
+}
+
+export function TaskBoard({ filter, userId }: TaskBoardProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const [tasks, setTasks] = useState<(Task & { id: string })[]>([]);
@@ -153,10 +158,9 @@ export function TaskBoard() {
   const isAdmin = useMemo(() => isSuperAdminByEmail || currentUserProfile?.role === 'Admin', [isSuperAdminByEmail, currentUserProfile]);
 
   const tasksQuery = useMemo(() => {
-    if (!user) return null;
     const collRef = collection(firestore, 'tasks');
     return query(collRef, orderBy('updatedAt', 'desc'));
-  }, [firestore, user]);
+  }, [firestore]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -232,6 +236,13 @@ export function TaskBoard() {
     }
   };
 
+  const filteredTasks = useMemo(() => {
+    if (!tasks) return [];
+    if (filter === 'mine' && userId) {
+      return tasks.filter(task => task.assignedToId === userId);
+    }
+    return tasks;
+  }, [tasks, filter, userId]);
 
   const tasksByColumn = useMemo(() => {
     const grouped: Record<TaskStatus, (Task & { id: string })[]> = {
@@ -239,15 +250,15 @@ export function TaskBoard() {
       'In Progress': [],
       'Done': [],
     };
-    if (tasks) {
-        tasks.forEach(task => {
+    if (filteredTasks) {
+        filteredTasks.forEach(task => {
           if (task.status && grouped[task.status]) {
             grouped[task.status].push(task);
           }
         });
     }
     return grouped;
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const handleTaskClick = (task: Task & { id: string }) => {
     setSelectedTask(task);
