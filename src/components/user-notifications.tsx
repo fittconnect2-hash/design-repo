@@ -20,8 +20,7 @@ export function UserNotifications() {
     const notificationsQuery = useMemo(() => {
         if (!user) return null;
         return query(
-            collection(firestore, 'notifications'),
-            where('userId', '==', user.uid),
+            collection(firestore, 'users', user.uid, 'notifications'),
             orderBy('createdAt', 'desc')
         );
     }, [firestore, user]);
@@ -34,8 +33,8 @@ export function UserNotifications() {
     }, [notifications]);
 
     const handleNotificationClick = async (notification: Notification) => {
-        if (!notification.isRead) {
-            const notifRef = doc(firestore, 'notifications', notification.id);
+        if (!notification.isRead && user) {
+            const notifRef = doc(firestore, 'users', user.uid, 'notifications', notification.id);
             await setDoc(notifRef, { isRead: true }, { merge: true });
         }
         setIsOpen(false);

@@ -434,6 +434,26 @@
         }
       },
       {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Stores notifications for a specific user as a subcollection.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The UID of the user who owns these notifications."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier for the notification."
+            }
+          ]
+        }
+      },
+      {
         "path": "/projects/{projectId}",
         "definition": {
           "entityName": "Project",
@@ -509,22 +529,6 @@
             {
               "name": "taskId",
               "description": "The unique identifier for the task."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/notifications/{notificationId}",
-        "definition": {
-          "entityName": "Notification",
-          "schema": {
-            "$ref": "#/backend/entities/Notification"
-          },
-          "description": "Stores notifications for individual users.",
-          "params": [
-            {
-              "name": "notificationId",
-              "description": "The unique identifier for the notification."
             }
           ]
         }

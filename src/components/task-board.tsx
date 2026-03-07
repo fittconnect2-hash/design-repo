@@ -186,7 +186,7 @@ export function TaskBoard() {
             title: selectedTask.title,
             description: selectedTask.description || '',
             projectId: selectedTask.projectId,
-            assignedToId: selectedTask.assignedToId || 'unassigned',
+            assignedToId: selectedTask.assignedToId || '_unassigned',
         });
     }
   }, [selectedTask, form]);
@@ -196,7 +196,7 @@ export function TaskBoard() {
 
     const taskRef = doc(firestore, 'tasks', selectedTask.id);
     const selectedProject = projects?.find(p => p.id === values.projectId);
-    const assignedToIdValue = values.assignedToId === 'unassigned' ? null : values.assignedToId || null;
+    const assignedToIdValue = values.assignedToId === '_unassigned' ? null : values.assignedToId || null;
     const assignedUser = users?.find(u => u.id === assignedToIdValue);
     const assignedToName = assignedUser?.displayName || '';
 
@@ -270,7 +270,7 @@ export function TaskBoard() {
             if (currentUserProfile && currentUserProfile.role === 'Staff Designer' && users) {
                 const admins = users.filter(u => u.role === 'Admin');
                 const notificationPromises = admins.map(admin => {
-                    const notificationRef = doc(collection(firestore, 'notifications'));
+                    const notificationRef = doc(collection(firestore, 'users', admin.id, 'notifications'));
                     const notificationData: Omit<Notification, 'createdAt'> = {
                         id: notificationRef.id,
                         userId: admin.id,
@@ -451,7 +451,7 @@ export function TaskBoard() {
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                                        <SelectItem value="_unassigned">Unassigned</SelectItem>
                                         {users?.map(user => (
                                             <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
                                         ))}
