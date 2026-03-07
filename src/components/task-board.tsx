@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, orderBy, query, doc, setDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { PlusCircle, Loader2, User, Share2 } from 'lucide-react';
 
 import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
@@ -131,7 +131,7 @@ function TaskBoardSkeleton() {
   );
 }
 
-export function TaskBoard({ filter }: { filter: 'all' | 'mine' }) {
+export function TaskBoard() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [tasks, setTasks] = useState<(Task & { id: string })[]>([]);
@@ -155,14 +155,8 @@ export function TaskBoard({ filter }: { filter: 'all' | 'mine' }) {
   const tasksQuery = useMemo(() => {
     if (!user) return null;
     const collRef = collection(firestore, 'tasks');
-    
-    if (isAdmin && filter === 'all') {
-      return query(collRef, orderBy('updatedAt', 'desc'));
-    }
-    
-    // Non-admins or when filter is 'mine'
-    return query(collRef, where('assignedToId', '==', user.uid), orderBy('updatedAt', 'desc'));
-  }, [firestore, user, isAdmin, filter]);
+    return query(collRef, orderBy('updatedAt', 'desc'));
+  }, [firestore, user]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
