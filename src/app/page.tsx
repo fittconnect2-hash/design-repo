@@ -1,5 +1,9 @@
 'use client';
 
+import { useState, useMemo } from 'react';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { LayoutGrid, List } from 'lucide-react';
+
 import { AddDesignButton } from '@/components/add-design-button';
 import { DesignCard } from '@/components/design-card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -8,8 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import type { Design } from '@/lib/definitions';
-import { collection, orderBy, query } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { DesignsTable } from '@/components/designs-table';
+import { Button } from '@/components/ui/button';
+import { ShareProjectsButton } from '@/components/share-projects-button';
 
 function DashboardSkeleton() {
   return (
@@ -46,6 +51,7 @@ function DashboardSkeleton() {
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [view, setView] = useState<'grid' | 'list'>('grid');
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
@@ -82,29 +88,46 @@ export default function Home() {
           <h1 className="text-3xl font-headline font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Your creative workspace. Grouped and organized.</p>
         </div>
-        <AddDesignButton />
+        <div className="flex items-center gap-2">
+           <div className="hidden items-center gap-2 md:flex">
+             <Button variant={view === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setView('grid')} aria-label="Grid View">
+                <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button variant={view === 'list' ? 'default' : 'outline'} size="icon" onClick={() => setView('list')} aria-label="List View">
+                <List className="h-4 w-4" />
+            </Button>
+           </div>
+          {user && <ShareProjectsButton userId={user.uid} />}
+          <AddDesignButton />
+        </div>
       </div>
 
       {hasDesigns ? (
-        <Accordion type="multiple" className="w-full space-y-6" defaultValue={Object.keys(groupedDesigns)}>
-          {Object.entries(groupedDesigns).map(([projectName, projectDesigns]) => (
-            <AccordionItem value={projectName} key={projectName} className="border-none">
-              <AccordionTrigger className="text-2xl font-headline font-semibold hover:no-underline rounded-lg bg-card border p-4 data-[state=open]:rounded-b-none">
-                <div className="flex items-center gap-3">
-                  <span>{projectName}</span>
-                  <Badge variant="secondary" className="text-base">{projectDesigns.length}</Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="bg-card border border-t-0 rounded-b-lg p-4">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {projectDesigns.map(design => (
-                    <DesignCard key={design.id} design={design} />
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <>
+          {view === 'grid' ? (
+            <Accordion type="multiple" className="w-full space-y-6" defaultValue={Object.keys(groupedDesigns)}>
+              {Object.entries(groupedDesigns).map(([projectName, projectDesigns]) => (
+                <AccordionItem value={projectName} key={projectName} className="border-none">
+                  <AccordionTrigger className="text-2xl font-headline font-semibold hover:no-underline rounded-lg bg-card border p-4 data-[state=open]:rounded-b-none">
+                    <div className="flex items-center gap-3">
+                      <span>{projectName}</span>
+                      <Badge variant="secondary" className="text-base">{projectDesigns.length}</Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="bg-card border border-t-0 rounded-b-lg p-4">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {projectDesigns.map(design => (
+                        <DesignCard key={design.id} design={design} />
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <DesignsTable designs={designs || []} />
+          )}
+        </>
       ) : (
          <Card className="flex flex-col items-center justify-center py-20">
             <CardHeader>

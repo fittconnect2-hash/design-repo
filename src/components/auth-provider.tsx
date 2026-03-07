@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isUnprotectedRoute = unprotectedRoutes.includes(pathname);
+  const isUnprotectedRoute = unprotectedRoutes.includes(pathname) || pathname.startsWith('/share/');
 
   useEffect(() => {
     if (isUserLoading) {
@@ -43,12 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!user && !isUnprotectedRoute) {
       router.replace('/login');
-    } else if (user && isUnprotectedRoute) {
-      router.replace('/');
+    } else if (user && isUnprotectedRoute && !pathname.startsWith('/share/')) {
+       router.replace('/');
     }
   }, [user, isUserLoading, router, pathname, isUnprotectedRoute]);
   
-  const showLoading = isUserLoading || (!user && !isUnprotectedRoute) || (user && isUnprotectedRoute)
+  const showLoading = isUserLoading || (!user && !isUnprotectedRoute) || (user && isUnprotectedRoute && !pathname.startsWith('/share/'))
 
   if (showLoading) {
     return <LoadingScreen />;

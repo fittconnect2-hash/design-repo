@@ -2,25 +2,29 @@
  * # Firestore Security Rules for DesignDock
  *
  * ## Core Philosophy
- * This ruleset enforces a strict user-ownership security model. All data is considered private and is exclusively controlled by the user who created it. There is no concept of public data or shared access in this model; every piece of information is tied directly to an authenticated user's ID.
+ * This ruleset enforces a strict user-ownership security model for writes,
+ * while allowing public read access for sharing purposes.
  *
  * ## Data Structure
- * The data is organized hierarchically to reflect ownership clearly. All user-specific data, including their profile and design projects, is nested under a top-level `/users/{userId}` path, where `{userId}` is the user's unique Firebase Authentication UID. This structure makes ownership explicit and allows for efficient and secure queries.
+ * The data is organized hierarchically. All user-specific data is nested under
+ * `/users/{userId}`, where `{userId}` is the user's unique Firebase Authentication UID.
+ * This structure makes ownership explicit for write operations.
  *
  * ## Key Security Decisions
- * - **No Public Data:** All collections and documents are protected and require user authentication.
- * - **No User Listing:** It is impossible for one user to list the profiles of other users. A user can only access their own data tree.
- * - **Strict Ownership:** Access to any document or subcollection is granted only if the requesting user's UID matches the `{userId}` in the document path.
- * - **Safe Defaults:** Destructive operations like deleting a root user profile are disabled by default (`allow delete: if false;`) as a safety precaution.
+ * - **Public Read Access:** The `designProjects` subcollection is publicly readable (`get`, `list`).
+ *   This is necessary for the public sharing feature to work. Anyone with a link can view the projects.
+ * - **No User Listing:** It is impossible for one user to list the profiles of other users.
+ * - **Strict Write Ownership:** All write operations (`create`, `update`, `delete`) are granted
+ *   only if the requesting user's UID matches the `{userId}` in the document path.
+ * - **Safe Defaults:** Deleting a root user profile is disabled by default (`allow delete: if false;`).
  *
  * ## Denormalization for Authorization
  * To ensure security rules are both performant and simple, this model relies on denormalization.
  * - The `User` document at `/users/{userId}` contains an `id` field that must match the `{userId}`.
- * - Each `DesignProject` document at `/users/{userId}/designProjects/{designProjectId}` contains a `userId` field that must match the `{userId}` from the path.
- * This strategy avoids the need for slow and costly `get()` or `exists()` calls in rules, as all the information needed for an authorization decision is present on the document being accessed.
- *
- * ## Structural Segregation
- * By nesting `designProjects` within a user-specific path (`/users/{userId}/designProjects`), the data is naturally segregated by owner. This allows for secure `list` operations (queries) without complex server-side filtering logic in the rules, as any query against this subcollection is inherently scoped to a single user.
+ * - Each `DesignProject` document at `/users/{userId}/designProjects/{designProjectId}` contains
+ *   a `userId` field that must match the `{userId}` from the path.
+ * This strategy avoids the need for slow and costly `get()` or `exists()` calls in rules for
+ * write operations.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -108,17 +112,15 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to design projects, which are private to each user.
+     * @description Controls access to design projects. Read is public, writes are private.
      * @path /users/{userId}/designProjects/{designProjectId}
+     * @allow (get, list) Anyone can read the list of projects or individual projects.
      * @allow (create) An authenticated user creates a new project under their own profile.
-     * @allow (get, list, update, delete) An authenticated user manages their own projects.
-     * @deny (get) User 'A' tries to read a project owned by user 'B'.
+     * @allow (update, delete) An authenticated user manages their own projects.
      * @deny (create) User 'A' tries to create a project under user 'B's profile.
-     * @principle Enforces strict document ownership within a user-specific subcollection.
      */
     match /users/{userId}/designProjects/{designProjectId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow get, list: if true;
       allow create: if isOwner(userId) && hasValidDesignProjectCreateData(userId);
       allow update: if isExistingOwner(userId) && hasImmutableDesignProjectOwnerId();
       allow delete: if isExistingOwner(userId);

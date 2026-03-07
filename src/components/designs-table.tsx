@@ -48,9 +48,10 @@ import { DesignForm } from './design-form';
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
+  isPublic?: boolean;
 }
 
-export function DesignsTable({ designs }: DesignsTableProps) {
+export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
@@ -140,6 +141,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     setIsViewModalOpen(isOpen);
     if (!isOpen) {
       setDesignToView(null);
+      document.body.style.pointerEvents = 'auto';
     }
   };
 
@@ -147,6 +149,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     setIsEditSheetOpen(isOpen);
     if (!isOpen) {
       setDesignToEdit(null);
+      document.body.style.pointerEvents = 'auto';
     }
   };
   
@@ -154,6 +157,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
       setDesignToDelete(null);
+      document.body.style.pointerEvents = 'auto';
     }
   };
 
@@ -168,7 +172,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
               <TableHead className="hidden lg:table-cell">Tags</TableHead>
               <TableHead className="hidden md:table-cell">Version</TableHead>
               <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
-              <TableHead className="text-right w-[80px]">Actions</TableHead>
+              {!isPublic && <TableHead className="text-right w-[80px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -199,179 +203,184 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                   <TableCell className="hidden lg:table-cell">
                     {design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() => handleOpenViewModal(design)}
-                          className="flex cursor-pointer items-center"
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => handleShare(design.id)}
-                          className="cursor-pointer"
-                        >
-                          <Share2 className="mr-2 h-4 w-4" />
-                          Share
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => handleOpenEditSheet(design)}
-                          className="flex cursor-pointer items-center"
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => handleOpenDeleteModal(design)}
-                          className="cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {!isPublic && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() => handleOpenViewModal(design)}
+                            className="flex cursor-pointer items-center"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => handleShare(design.id)}
+                            className="cursor-pointer"
+                          >
+                            <Share2 className="mr-2 h-4 w-4" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => handleOpenEditSheet(design)}
+                            className="flex cursor-pointer items-center"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => handleOpenDeleteModal(design)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  No designs in this project yet.
+                <TableCell colSpan={isPublic ? 5 : 6} className="h-24 text-center">
+                  No designs to display.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+      {!isPublic && (
+        <>
+          <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
+            <DialogContent className="sm:max-w-3xl p-0">
+              {designToView ? (
+                <>
+                  <DialogHeader className="p-6 pb-4">
+                    <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
+                    <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                    <div className="px-6 pb-6 space-y-6">
+                      <div className="relative aspect-video w-full">
+                        <Image
+                          src={designToView.imageUrl}
+                          alt={designToView.name}
+                          fill
+                          className="object-cover rounded-md border"
+                          data-ai-hint="project hero"
+                          priority
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {designToView.tags?.map((tag, index) => (
+                          <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
+                        ))}
+                      </div>
+                      
+                      <Separator />
 
-      <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
-        <DialogContent className="sm:max-w-3xl p-0">
-          {designToView ? (
-            <>
-              <DialogHeader className="p-6 pb-4">
-                <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
-                <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                <div className="px-6 pb-6 space-y-6">
-                  <div className="relative aspect-video w-full">
-                    <Image
-                      src={designToView.imageUrl}
-                      alt={designToView.name}
-                      fill
-                      className="object-cover rounded-md border"
-                      data-ai-hint="project hero"
-                      priority
+                       <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                              <div className="font-semibold text-foreground">Version</div>
+                              <div className="text-muted-foreground">v{designToView.version}</div>
+                          </div>
+                          <div>
+                              <div className="font-semibold text-foreground">Created</div>
+                              <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
+                          </div>
+                          <div>
+                              <div className="font-semibold text-foreground">Last Updated</div>
+                              <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
+                          </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
+                              <Figma className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
+                            </CardContent>
+                          </Card>
+                        </a>
+                        <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
+                          <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <UiCardTitle className="text-sm font-medium">Prototype Link</UiCardTitle>
+                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
+                            </CardContent>
+                          </Card>
+                        </a>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                  <DialogFooter className="p-6 pt-4 border-t">
+                      <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
+                        View Full Page
+                      </Button>
+                      <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
+                  </DialogFooter>
+                </>
+              ) : null}
+            </DialogContent>
+          </Dialog>
+          
+          <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
+            <SheetContent className="p-0 sm:max-w-2xl">
+              <SheetHeader className="p-6 pb-4">
+                <SheetTitle>Edit Design Project</SheetTitle>
+                <SheetDescription>
+                  Make changes to your project here. Click save when you're done.
+                </SheetDescription>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-6.5rem)]">
+                <div className="px-6 pb-6">
+                  {designToEdit && (
+                    <DesignForm
+                      design={designToEdit}
+                      view="sheet"
+                      onSuccess={() => handleEditSheetOpenChange(false)}
                     />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {designToView.tags?.map((tag, index) => (
-                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-                  
-                  <Separator />
-
-                   <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                          <div className="font-semibold text-foreground">Version</div>
-                          <div className="text-muted-foreground">v{designToView.version}</div>
-                      </div>
-                      <div>
-                          <div className="font-semibold text-foreground">Created</div>
-                          <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
-                      </div>
-                      <div>
-                          <div className="font-semibold text-foreground">Last Updated</div>
-                          <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
-                      </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
-                          <Figma className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
-                        </CardContent>
-                      </Card>
-                    </a>
-                    <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <UiCardTitle className="text-sm font-medium">Prototype Link</UiCardTitle>
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
-                        </CardContent>
-                      </Card>
-                    </a>
-                  </div>
+                  )}
                 </div>
               </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t">
-                  <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
-                    View Full Page
-                  </Button>
-                  <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      
-      <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
-        <SheetContent className="p-0 sm:max-w-2xl">
-          <SheetHeader className="p-6 pb-4">
-            <SheetTitle>Edit Design Project</SheetTitle>
-            <SheetDescription>
-              Make changes to your project here. Click save when you're done.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-6.5rem)]">
-            <div className="px-6 pb-6">
-              {designToEdit && (
-                <DesignForm
-                  design={designToEdit}
-                  view="sheet"
-                  onSuccess={() => handleEditSheetOpenChange(false)}
-                />
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
+            </SheetContent>
+          </Sheet>
 
-      <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you absolutely sure?</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. This will permanently delete the project &quot;{designToDelete?.name}&quot;.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDeleteModalOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleDeleteConfirm} variant="destructive">
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Are you absolutely sure?</DialogTitle>
+                <DialogDescription>
+                  This action cannot be undone. This will permanently delete the project &quot;{designToDelete?.name}&quot;.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => handleDeleteModalOpenChange(false)}>Cancel</Button>
+                <Button onClick={handleDeleteConfirm} variant="destructive">
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </>
   );
 }
