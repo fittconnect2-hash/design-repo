@@ -13,6 +13,7 @@ import {
   BookText,
   History,
   FolderKanban,
+  Archive,
 } from "lucide-react";
 
 const links = [
@@ -21,6 +22,7 @@ const links = [
   { href: "/reports", label: "Report", icon: BookText },
   { href: "/audit-logs",label: "Audit Logs", icon: History },
   { href: "/", label: "Projects", icon: FolderKanban },
+  { href: "/designs", label: "Design Repo", icon: Archive },
 ];
 
 export function SidebarNav() {
@@ -29,7 +31,18 @@ export function SidebarNav() {
   return (
     <SidebarMenu>
       {links.map((link) => {
-        const isActive = (link.href === '/' && (pathname === '/' || pathname.startsWith('/designs'))) || (link.href !== '/' && pathname.startsWith(link.href));
+        let isActive;
+        if (link.href === '/') {
+          // "Projects" is active on the homepage and on specific design pages, but not the new Design Repo page.
+          isActive = pathname === '/' || /^\/designs\/.+/.test(pathname);
+        } else if (link.href === '/designs') {
+          // "Design Repo" is active only on the /designs page.
+          isActive = pathname === '/designs';
+        }
+        else {
+          isActive = pathname.startsWith(link.href);
+        }
+
         return (
           <SidebarMenuItem key={link.href}>
             <SidebarMenuButton
