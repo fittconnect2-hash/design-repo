@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { collection, orderBy, query } from 'firebase/firestore';
 
 import { AddProjectButton } from '@/components/add-project-button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import type { Project } from '@/lib/definitions';
