@@ -11,7 +11,7 @@ export function ShareProjectsButton({ userId }: { userId: string }) {
     navigator.clipboard.writeText(url).then(() => {
       toast({
         title: 'Public Link Copied!',
-        description: 'A shareable link to your projects has been copied.',
+        description: 'A shareable link to your public designs has been copied.',
       });
     }).catch(err => {
       console.error('Failed to copy share link:', err);
@@ -26,7 +26,7 @@ export function ShareProjectsButton({ userId }: { userId: string }) {
   return (
     <Button variant="outline" onClick={handleShare}>
       <Share2 className="mr-2 h-4 w-4" />
-      Share Publicly
+      Share Designs
     </Button>
   );
 }

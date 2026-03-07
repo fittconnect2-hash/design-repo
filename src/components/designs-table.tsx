@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder, Share2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 import type { Design, Project } from '@/lib/definitions';
@@ -272,24 +272,6 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     }
   };
 
-  const handleCopyPublicLink = () => {
-    if (!auth.currentUser) return;
-    const url = `${window.location.origin}/share/${auth.currentUser.uid}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: 'Public Link Copied!',
-        description: 'A shareable link to all your public designs has been copied.',
-      });
-    }).catch(err => {
-      console.error('Failed to copy share link:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not copy the share link.',
-      });
-    });
-  };
-
   return (
     <>
       {!isPublic && numSelected > 0 && (
@@ -301,12 +283,6 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
           <Button size="sm" variant="outline" onClick={() => setBulkAction('private')}>
             <Lock className="mr-2 h-4 w-4" /> Make Private
           </Button>
-          <div className="ml-auto">
-             <Button size="sm" variant="outline" onClick={handleCopyPublicLink}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Copy Public Link
-            </Button>
-          </div>
         </div>
       )}
       <div className="rounded-md border">
