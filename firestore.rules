@@ -122,18 +122,9 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // Admins can GET any task. Staff can GET a task if it's assigned to them.
-      // This rule is checked against every document a LIST query would return.
-      allow get: if isAdmin() || (isSignedIn() && 'assignedToId' in resource.data && resource.data.assignedToId == request.auth.uid);
-
-      // ANY signed-in user is allowed to INITIATE a list query.
-      // The query's results are then secured by the 'get' rule above.
-      // An Admin's query for all tasks succeeds because the 'get' rule will always return true for them.
-      // A Staff Designer's query succeeds ONLY IF it is constrained (e.g., `where('assignedToId', '==', request.auth.uid)`),
-      // because that's the only way to guarantee all returned documents will pass their 'get' rule check.
-      allow list: if isSignedIn();
-
-      // For now, any signed-in user can create or update tasks to foster collaboration.
+      // A user can read a task if they are the assigned user.
+      allow read: if request.auth.uid == resource.data.assignedToId;
+      // Any signed-in user can create/update tasks to allow assignment.
       allow write: if isSignedIn();
     }
 

@@ -153,15 +153,11 @@ export function TaskBoard() {
   const isAdmin = useMemo(() => isSuperAdminByEmail || currentUserProfile?.role === 'Admin', [isSuperAdminByEmail, currentUserProfile]);
 
   const tasksQuery = useMemo(() => {
-    if (!user || isUserProfileLoading) return null; // Wait until admin status is known.
+    if (!user) return null;
     const collRef = collection(firestore, 'tasks');
-    if (isAdmin) {
-      // Admin sees all tasks.
-      return query(collRef, orderBy('createdAt', 'desc'));
-    }
-    // Staff Designer sees only their tasks.
+    // ALL users will only see tasks assigned to them on this board.
     return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
-  }, [firestore, user, isAdmin, isUserProfileLoading]);
+  }, [firestore, user]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -277,7 +273,8 @@ export function TaskBoard() {
     const taskToMove = tasks.find(t => t.id === taskId);
     if (taskToMove && taskToMove.status !== status) {
         // Optimistic update
-        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status, updatedAt: new Date() } : t));
+        const optimisticUpdatedAt = new Date();
+        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status, updatedAt: optimisticUpdatedAt } : t));
         
         // Firestore update
         const taskRef = doc(firestore, 'tasks', taskId);
