@@ -52,6 +52,15 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
+  React.useEffect(() => {
+    // When both modals are closed, this effect will run and ensure
+    // the `pointer-events` style is removed from the body, fixing the frozen UI.
+    if (!isViewModalOpen && !isDeleteModalOpen) {
+      document.body.style.pointerEvents = '';
+    }
+  }, [isViewModalOpen, isDeleteModalOpen]);
+
+
   const handleShare = (designId: string) => {
     const url = `${window.location.origin}/designs/${designId}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -73,9 +82,6 @@ export function DesignsTable({ designs }: DesignsTableProps) {
     if (designToDelete) {
       handleDelete(designToDelete);
     }
-    // Close modal
-    setIsDeleteModalOpen(false);
-    setDesignToDelete(null);
   };
 
   const handleDelete = async (design: Design & { id: string }) => {
@@ -88,6 +94,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
             title: 'Success',
             description: 'Design project deleted successfully.',
           });
+          setIsDeleteModalOpen(false);
+          setDesignToDelete(null);
         })
         .catch(() => {
           const permissionError = new FirestorePermissionError({
@@ -112,6 +120,23 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleOpenDeleteModal = (design: Design & { id: string }) => {
     setDesignToDelete(design);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleViewModalOpenChange = (isOpen: boolean) => {
+    setIsViewModalOpen(isOpen);
+    if (!isOpen) {
+      // Delay clearing data to allow for exit animation before content disappears
+      setTimeout(() => {
+        setDesignToView(null);
+      }, 150);
+    }
+  };
+  
+  const handleDeleteModalOpenChange = (isOpen: boolean) => {
+    setIsDeleteModalOpen(isOpen);
+    if (!isOpen) {
+      setDesignToDelete(null);
+    }
   };
 
   return (
@@ -205,7 +230,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
       </div>
 
       {/* View Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+      <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
         <DialogContent className="sm:max-w-3xl p-0">
           {designToView ? (
             <>
@@ -272,7 +297,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+      <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
