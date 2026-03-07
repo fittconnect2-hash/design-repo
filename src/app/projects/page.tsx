@@ -1,19 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { collection, orderBy, query } from 'firebase/firestore';
-import { LayoutGrid, List } from 'lucide-react';
 
-import { AddDesignButton } from '@/components/add-design-button';
-import { DesignCard } from '@/components/design-card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
+import { AddProjectButton } from '@/components/add-project-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import type { Design } from '@/lib/definitions';
-import { DesignsTable } from '@/components/designs-table';
-import { Button } from '@/components/ui/button';
+import type { Project } from '@/lib/definitions';
+import { ProjectCard } from '@/components/project-card';
 import { ShareProjectsButton } from '@/components/share-projects-button';
 
 function DashboardSkeleton() {
@@ -23,24 +18,20 @@ function DashboardSkeleton() {
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-10 w-32" />
       </div>
-      <div className="space-y-6">
-        {[1, 2].map((i) => (
-          <div key={i}>
-            <Skeleton className="h-8 w-1/3 mb-4" />
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[1, 2, 3, 4].map((j) => (
-                <Card key={j}>
-                  <CardHeader className="p-0">
-                    <Skeleton className="aspect-video w-full" />
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/4" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((j) => (
+          <Card key={j}>
+            <CardHeader>
+              <Skeleton className="h-6 w-3/4" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+            </CardContent>
+            <CardFooter>
+              <Skeleton className="h-4 w-1/2" />
+            </CardFooter>
+          </Card>
         ))}
       </div>
     </div>
@@ -51,31 +42,18 @@ function DashboardSkeleton() {
 export default function ProjectsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [view, setView] = useState<'grid' | 'list'>('grid');
 
-  const designsQuery = useMemo(() => {
+  const projectsQuery = useMemo(() => {
     if (!user) return null;
-    const collRef = collection(firestore, 'users', user.uid, 'designProjects');
+    const collRef = collection(firestore, 'users', user.uid, 'projects');
     return query(collRef, orderBy('updatedAt', 'desc'));
   }, [firestore, user]);
 
-  const { data: designs, isLoading: isLoadingDesigns } = useCollection<Design & { id: string }>(designsQuery);
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
 
-  const isLoading = isUserLoading || (user && isLoadingDesigns);
+  const isLoading = isUserLoading || (user && isLoadingProjects);
 
-  const groupedDesigns = useMemo(() => {
-    if (!designs) return {};
-    return designs.reduce((acc, design) => {
-      const projectName = design.projectName || 'Uncategorized';
-      if (!acc[projectName]) {
-        acc[projectName] = [];
-      }
-      acc[projectName].push(design);
-      return acc;
-    }, {} as Record<string, (Design & {id: string})[]>);
-  }, [designs]);
-
-  const hasDesigns = designs && designs.length > 0;
+  const hasProjects = projects && projects.length > 0;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -89,53 +67,25 @@ export default function ProjectsPage() {
           <p className="text-muted-foreground">Your creative workspace. Grouped and organized.</p>
         </div>
         <div className="flex items-center gap-2">
-           <div className="hidden items-center gap-2 md:flex">
-             <Button variant={view === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setView('grid')} aria-label="Grid View">
-                <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button variant={view === 'list' ? 'default' : 'outline'} size="icon" onClick={() => setView('list')} aria-label="List View">
-                <List className="h-4 w-4" />
-            </Button>
-           </div>
           {user && <ShareProjectsButton userId={user.uid} />}
-          <AddDesignButton buttonText="Add Project" />
+          <AddProjectButton buttonText="Add Project" />
         </div>
       </div>
 
-      {hasDesigns ? (
-        <>
-          {view === 'grid' ? (
-            <Accordion type="multiple" className="w-full space-y-6" defaultValue={Object.keys(groupedDesigns)}>
-              {Object.entries(groupedDesigns).map(([projectName, projectDesigns]) => (
-                <AccordionItem value={projectName} key={projectName} className="border-none">
-                  <AccordionTrigger className="text-2xl font-headline font-semibold hover:no-underline rounded-lg bg-card border p-4 data-[state=open]:rounded-b-none">
-                    <div className="flex items-center gap-3">
-                      <span>{projectName}</span>
-                      <Badge variant="secondary" className="text-base">{projectDesigns.length}</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="bg-card border border-t-0 rounded-b-lg p-4">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {projectDesigns.map(design => (
-                        <DesignCard key={design.id} design={design} />
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <DesignsTable designs={designs || []} />
-          )}
-        </>
+      {hasProjects ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map(project => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
       ) : (
          <Card className="flex flex-col items-center justify-center py-20">
             <CardHeader>
               <CardTitle className="text-2xl">No Projects Yet</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-                <p className="text-muted-foreground">Get started by adding your first project.</p>
-                <AddDesignButton buttonText="Add Project" />
+                <p className="text-muted-foreground">Get started by creating your first project.</p>
+                <AddProjectButton buttonText="Add Project" />
             </CardContent>
         </Card>
       )}

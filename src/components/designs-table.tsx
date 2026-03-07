@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
-import type { Design } from '@/lib/definitions';
+import type { Design, Project } from '@/lib/definitions';
 import {
   Table,
   TableBody,
@@ -31,8 +31,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useCollection } from '@/firebase';
+import { doc, deleteDoc, collection, query } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +62,18 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
+
+  const projectsQuery = React.useMemo(() => {
+    if (!auth.currentUser) return null;
+    return query(collection(firestore, 'users', auth.currentUser.uid, 'projects'));
+  }, [firestore, auth.currentUser]);
+
+  const { data: projects } = useCollection<Project>(projectsQuery);
+
+  const projectMap = React.useMemo(() => {
+    if (!projects) return new Map();
+    return new Map(projects.map(p => [p.id, p.name]));
+  }, [projects]);
 
   React.useEffect(() => {
     if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen) {
@@ -96,13 +108,13 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
 
   const handleDelete = async (design: Design & { id: string }) => {
     if (auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', design.id);
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', design.id);
       
       deleteDoc(designRef)
         .then(() => {
           toast({
             title: 'Success',
-            description: 'Design project deleted successfully.',
+            description: 'Design deleted successfully.',
           });
           setIsDeleteModalOpen(false);
           setDesignToDelete(null);
@@ -116,7 +128,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
           toast({
             variant: 'destructive',
             title: 'Error',
-            description: 'Failed to delete design project.',
+            description: 'Failed to delete design.',
           });
         });
     }
@@ -169,6 +181,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
             <TableRow>
               <TableHead className="w-[80px] hidden sm:table-cell">Image</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead className="hidden md:table-cell">Project</TableHead>
               <TableHead className="hidden lg:table-cell">Tags</TableHead>
               <TableHead className="hidden md:table-cell">Version</TableHead>
               <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
@@ -189,7 +202,8 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                       data-ai-hint="design thumbnail"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{design.name || 'Untitled Project'}</TableCell>
+                  <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
+                   <TableCell className="hidden md:table-cell text-muted-foreground">{projectMap.get(design.projectId) || 'N/A'}</TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {design.tags?.slice(0, 3).map((tag, index) => (
@@ -249,7 +263,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isPublic ? 5 : 6} className="h-24 text-center">
+                <TableCell colSpan={isPublic ? 6 : 7} className="h-24 text-center">
                   No designs to display.
                 </TableCell>
               </TableRow>
@@ -287,7 +301,11 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                       
                       <Separator />
 
-                       <div className="grid grid-cols-3 gap-4 text-sm">
+                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                          <div>
+                              <div className="font-semibold text-foreground">Project</div>
+                              <div className="text-muted-foreground">{projectMap.get(designToView.projectId) || 'N/A'}</div>
+                          </div>
                           <div>
                               <div className="font-semibold text-foreground">Version</div>
                               <div className="text-muted-foreground">v{designToView.version}</div>
@@ -344,9 +362,9 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
           <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
             <SheetContent className="p-0 sm:max-w-2xl">
               <SheetHeader className="p-6 pb-4">
-                <SheetTitle>Edit Design Project</SheetTitle>
+                <SheetTitle>Edit Design</SheetTitle>
                 <SheetDescription>
-                  Make changes to your project here. Click save when you're done.
+                  Make changes to your design here. Click save when you're done.
                 </SheetDescription>
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-6.5rem)]">
@@ -368,7 +386,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
               <DialogHeader>
                 <DialogTitle>Are you absolutely sure?</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. This will permanently delete the project &quot;{designToDelete?.name}&quot;.
+                  This action cannot be undone. This will permanently delete the design &quot;{designToDelete?.name}&quot;.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>

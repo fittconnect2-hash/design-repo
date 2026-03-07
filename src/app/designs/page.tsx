@@ -29,7 +29,7 @@ export default function DesignsPage() {
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
-    const collRef = collection(firestore, 'users', user.uid, 'designProjects');
+    const collRef = collection(firestore, 'users', user.uid, 'designs');
     return query(collRef, orderBy('updatedAt', 'desc'));
   }, [firestore, user]);
 
@@ -63,7 +63,7 @@ export default function DesignsPage() {
               <CardTitle className="text-2xl">No Designs Yet</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-                <p className="text-muted-foreground">Get started by adding your first design project.</p>
+                <p className="text-muted-foreground">Get started by adding your first design.</p>
                 <AddDesignButton buttonText="Add Design" />
             </CardContent>
         </Card>

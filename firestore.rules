@@ -3,28 +3,20 @@
  *
  * ## Core Philosophy
  * This ruleset enforces a strict user-ownership security model for writes,
- * while allowing public read access for sharing purposes.
+ * while allowing public read access for sharing purposes on designs.
  *
  * ## Data Structure
  * The data is organized hierarchically. All user-specific data is nested under
  * `/users/{userId}`, where `{userId}` is the user's unique Firebase Authentication UID.
- * This structure makes ownership explicit for write operations.
+ * This structure makes ownership explicit.
  *
  * ## Key Security Decisions
- * - **Public Read Access:** The `designProjects` subcollection is publicly readable (`get`, `list`).
- *   This is necessary for the public sharing feature to work. Anyone with a link can view the projects.
+ * - **Public Read for Designs:** The `designs` subcollection is publicly readable (`get`, `list`)
+ *   to support the public sharing feature.
+ * - **Private Projects:** The `projects` subcollection is private. Only the owner can read or write.
  * - **No User Listing:** It is impossible for one user to list the profiles of other users.
  * - **Strict Write Ownership:** All write operations (`create`, `update`, `delete`) are granted
  *   only if the requesting user's UID matches the `{userId}` in the document path.
- * - **Safe Defaults:** Deleting a root user profile is disabled by default (`allow delete: if false;`).
- *
- * ## Denormalization for Authorization
- * To ensure security rules are both performant and simple, this model relies on denormalization.
- * - The `User` document at `/users/{userId}` contains an `id` field that must match the `{userId}`.
- * - Each `DesignProject` document at `/users/{userId}/designProjects/{designProjectId}` contains
- *   a `userId` field that must match the `{userId}` from the path.
- * This strategy avoids the need for slow and costly `get()` or `exists()` calls in rules for
- * write operations.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -34,59 +26,31 @@ service cloud.firestore {
     // Helper Functions
     // ----------------------------------------------------------------------
 
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently signed-in user is the owner of the document,
-     * based on the provided userId from the path.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Checks if the signed-in user is the owner of an EXISTING document.
-     * CRITICAL: Used for all update and delete operations to prevent modifying
-     * or deleting documents that do not exist.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
     
-    /**
-     * Validates the data for a new User document creation.
-     * Ensures the internal 'id' field matches the document's path ID.
-     */
     function hasValidUserCreateData(userId) {
       return request.resource.data.id == userId;
     }
 
-    /**
-     * Validates that the 'id' field of a User document is not being changed.
-     * Enforces the immutability of the ownership link.
-     */
     function hasImmutableUserId() {
       return request.resource.data.id == resource.data.id;
     }
 
-    /**
-     * Validates the data for a new DesignProject document creation.
-     * Ensures the internal 'userId' field matches the owner's UID.
-     */
-    function hasValidDesignProjectCreateData(userId) {
+    function hasValidOwnerId(userId) {
       return request.resource.data.userId == userId;
     }
 
-    /**
-     * Validates that the 'userId' field of a DesignProject is not being changed.
-     * Enforces the immutability of the ownership link.
-     */
-    function hasImmutableDesignProjectOwnerId() {
+    function hasImmutableOwnerId() {
       return request.resource.data.userId == resource.data.userId;
     }
 
@@ -94,35 +58,33 @@ service cloud.firestore {
     // Collection Rules
     // ----------------------------------------------------------------------
 
-    /**
-     * @description Controls access to a user's own profile document.
-     * @path /users/{userId}
-     * @allow (get, update) Authenticated user reads or updates their own profile.
-     * @allow (create) New user signs up and creates their own profile document.
-     * @deny (get) Another authenticated user tries to read this profile.
-     * @deny (delete) Anyone trying to delete a user profile.
-     * @principle Restricts access to a user's own data tree and enforces self-creation.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && hasValidUserCreateData(userId);
       allow update: if isExistingOwner(userId) && hasImmutableUserId();
-      allow delete: if false; // Deleting user profiles is a sensitive operation, disabled by default.
+      allow delete: if false; // Deleting user profiles is disabled by default.
     }
 
     /**
-     * @description Controls access to design projects. Read is public, writes are private.
-     * @path /users/{userId}/designProjects/{designProjectId}
-     * @allow (get, list) Anyone can read the list of projects or individual projects.
-     * @allow (create) An authenticated user creates a new project under their own profile.
-     * @allow (update, delete) An authenticated user manages their own projects.
-     * @deny (create) User 'A' tries to create a project under user 'B's profile.
+     * @description Controls access to high-level projects. Read and write are private.
+     * @path /users/{userId}/projects/{projectId}
      */
-    match /users/{userId}/designProjects/{designProjectId} {
+    match /users/{userId}/projects/{projectId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to designs. Read is public, writes are private.
+     * @path /users/{userId}/designs/{designId}
+     */
+    match /users/{userId}/designs/{designId} {
       allow get, list: if true;
-      allow create: if isOwner(userId) && hasValidDesignProjectCreateData(userId);
-      allow update: if isExistingOwner(userId) && hasImmutableDesignProjectOwnerId();
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isExistingOwner(userId) && hasImmutableOwnerId();
       allow delete: if isExistingOwner(userId);
     }
   }

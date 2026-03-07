@@ -3,14 +3,14 @@
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Edit, ExternalLink, Figma, Share2 } from 'lucide-react';
+import { ArrowLeft, Edit, ExternalLink, Figma, Folder, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useDoc, useFirestore, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { Design } from '@/lib/definitions';
+import type { Design, Project } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
 import {
@@ -73,12 +73,19 @@ export default function DesignDetailsPage() {
 
   const designRef = useMemo(() => {
     if (!user || !params.id) return null;
-    return doc(firestore, 'users', user.uid, 'designProjects', params.id);
+    return doc(firestore, 'users', user.uid, 'designs', params.id);
   }, [firestore, user, params.id]);
 
   const { data: design, isLoading: isDesignLoading } = useDoc<Design & { id: string }>(designRef);
 
-  const isLoading = isUserLoading || isDesignLoading;
+  const projectRef = useMemo(() => {
+    if (!user || !design?.projectId) return null;
+    return doc(firestore, 'users', user.uid, 'projects', design.projectId);
+  }, [firestore, user, design]);
+  
+  const { data: project, isLoading: isProjectLoading } = useDoc<Project>(projectRef);
+
+  const isLoading = isUserLoading || isDesignLoading || (design && isProjectLoading);
 
   const handleShare = () => {
     const url = window.location.href;
@@ -109,9 +116,9 @@ export default function DesignDetailsPage() {
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
           <Button asChild variant="ghost" className="pl-0">
-          <Link href="/projects" className="flex items-center gap-2">
+          <Link href="/designs" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            All Projects
+            All Designs
           </Link>
         </Button>
         <div className="flex items-center gap-2">
@@ -128,9 +135,9 @@ export default function DesignDetailsPage() {
             </SheetTrigger>
             <SheetContent className="p-0 sm:max-w-2xl">
               <SheetHeader className="p-6 pb-4">
-                <SheetTitle>Edit Design Project</SheetTitle>
+                <SheetTitle>Edit Design</SheetTitle>
                 <SheetDescription>
-                  Make changes to your project here. Click save when you're done.
+                  Make changes to your design here. Click save when you're done.
                 </SheetDescription>
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-6.5rem)]">
@@ -175,7 +182,10 @@ export default function DesignDetailsPage() {
            <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
               <div>
                   <div className="font-semibold text-foreground">Project</div>
-                  <div className="text-muted-foreground">{design.projectName}</div>
+                  <div className="text-muted-foreground flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    {project?.name ?? 'N/A'}
+                  </div>
               </div>
               <div>
                   <div className="font-semibold text-foreground">Version</div>

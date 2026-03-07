@@ -1,7 +1,17 @@
-export type Design = {
+export type Project = {
   userId: string;
   name: string;
-  projectName: string;
+  description: string;
+  startDate?: any;
+  endDate?: any;
+  createdAt?: any;
+  updatedAt?: any;
+};
+
+export type Design = {
+  userId: string;
+  projectId: string;
+  name: string;
   version: string;
   description: string;
   figmaLink: string;

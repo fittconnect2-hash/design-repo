@@ -11,10 +11,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { DesignForm } from '@/components/design-form';
+import { ProjectForm } from '@/components/project-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export function AddDesignButton({ buttonText = 'Add Design' }: { buttonText?: string }) {
+export function AddProjectButton({ buttonText = 'Add Project' }: { buttonText?: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -23,7 +23,6 @@ export function AddDesignButton({ buttonText = 'Add Design' }: { buttonText?: st
   }, []);
 
   if (!isMounted) {
-    // Render a placeholder on the server and initial client render
     return (
       <Button>
         <PlusCircle className="mr-2 h-4 w-4" />
@@ -42,14 +41,14 @@ export function AddDesignButton({ buttonText = 'Add Design' }: { buttonText?: st
       </SheetTrigger>
       <SheetContent className="p-0 sm:max-w-2xl">
         <SheetHeader className="p-6 pb-4">
-          <SheetTitle>Add New Design</SheetTitle>
+          <SheetTitle>Add New Project</SheetTitle>
           <SheetDescription>
-            Fill out the form below to add a new design to your portfolio.
+            Fill out the form below to create a new project category.
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-6.5rem)]">
           <div className="px-6 pb-6">
-            <DesignForm view="sheet" onSuccess={() => setOpen(false)} />
+            <ProjectForm view="sheet" onSuccess={() => setOpen(false)} />
           </div>
         </ScrollArea>
       </SheetContent>

@@ -21,18 +21,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { Design } from '@/lib/definitions';
+import type { Design, Project } from '@/lib/definitions';
 import { suggestDesignTags } from '@/ai/flows/suggest-design-tags-flow';
 import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore } from '@/firebase';
-import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
-
+import { useAuth, useFirestore, useCollection } from '@/firebase';
+import { doc, setDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
+  projectId: z.string().min(1, { message: 'Please select a project.' }),
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  projectName: z.string().min(2, { message: 'Project name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }),
   figmaLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -57,9 +57,17 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const auth = useAuth();
   const router = useRouter();
 
+  const projectsQuery = useMemo(() => {
+    if (!auth.currentUser) return null;
+    const collRef = collection(firestore, 'users', auth.currentUser.uid, 'projects');
+    return query(collRef, orderBy('name', 'asc'));
+  }, [firestore, auth.currentUser]);
+
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
+
   const defaultValues: Partial<DesignFormValues> = {
+    projectId: design?.projectId || '',
     name: design?.name || '',
-    projectName: design?.projectName || '',
     description: design?.description || '',
     imageUrl: design?.imageUrl || '',
     figmaLink: design?.figmaLink || '',
@@ -85,6 +93,8 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
 
     try {
+      const designCollectionRef = collection(firestore, 'users', uid, 'designs');
+
       if (design) {
         // Update existing design
         let newVersion: string;
@@ -104,14 +114,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
             newVersion = '1.0';
         }
 
-        const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
+        const designRef = doc(designCollectionRef, design.id);
         const dataToUpdate = {
-          name: values.name,
-          projectName: values.projectName,
-          description: values.description,
-          imageUrl: values.imageUrl,
-          figmaLink: values.figmaLink,
-          prototypeUrl: values.prototypeUrl,
+          ...values,
           tags: tagsArray,
           userId: uid,
           version: newVersion,
@@ -122,16 +127,10 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         
       } else {
         // Create new design
-        const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        const newDocRef = doc(collectionRef);
+        const newDocRef = doc(designCollectionRef);
         const dataToCreate = {
+          ...values,
           userId: uid,
-          name: values.name,
-          projectName: values.projectName,
-          description: values.description,
-          imageUrl: values.imageUrl,
-          figmaLink: values.figmaLink || '',
-          prototypeUrl: values.prototypeUrl || '',
           tags: tagsArray,
           version: '1.0',
           createdAt: serverTimestamp(),
@@ -148,7 +147,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
 
     } catch (error: unknown) {
       console.error("Operation failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
+      const errorMessage = error instanceof Error ? error.message : 'Could not save the design.';
       toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -225,15 +224,24 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const formContent = (
       <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-             <FormField
+            <FormField
               control={form.control}
-              name="projectName"
+              name="projectId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Project</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Marketing Website" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingProjects}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {projects?.map(project => (
+                        <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -258,7 +266,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe your project..." {...field} rows={4} />
+                    <Textarea placeholder="Describe your design..." {...field} rows={4} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -353,7 +361,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
               )}
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {design ? 'Save Changes' : 'Create Project'}
+                {design ? 'Save Changes' : 'Create Design'}
               </Button>
             </div>
           </form>

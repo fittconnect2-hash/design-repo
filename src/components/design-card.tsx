@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useDoc } from '@/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
@@ -37,6 +37,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { DesignForm } from './design-form';
+import type { Project } from '@/lib/definitions';
 
 interface DesignCardProps {
   design: Design & { id: string };
@@ -50,6 +51,13 @@ export function DesignCard({ design }: DesignCardProps) {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
+
+  const projectRef = React.useMemo(() => {
+    if (!auth.currentUser || !design.projectId) return null;
+    return doc(firestore, 'users', auth.currentUser.uid, 'projects', design.projectId);
+  }, [firestore, auth.currentUser, design.projectId]);
+
+  const { data: project } = useDoc<Project>(projectRef);
 
   React.useEffect(() => {
     if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen) {
@@ -79,7 +87,7 @@ export function DesignCard({ design }: DesignCardProps) {
 
   const handleDeleteConfirm = () => {
     if (auth.currentUser) {
-      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designProjects', design.id);
+      const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', design.id);
       
       deleteDoc(designRef)
         .then(() => {
@@ -198,7 +206,11 @@ export function DesignCard({ design }: DesignCardProps) {
                   
                   <Separator />
 
-                   <div className="grid grid-cols-3 gap-4 text-sm">
+                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                       <div>
+                          <div className="font-semibold text-foreground">Project</div>
+                          <div className="text-muted-foreground">{project?.name || 'N/A'}</div>
+                      </div>
                       <div>
                           <div className="font-semibold text-foreground">Version</div>
                           <div className="text-muted-foreground">v{design.version}</div>

@@ -47,14 +47,7 @@ export function SidebarNav() {
     return links.map((link) => {
       let isActive;
       if (link.href === '/') {
-        // "Overview" is active only on the homepage.
         isActive = pathname === '/';
-      } else if (link.href === '/projects') {
-         // "Projects" is active on the projects page and on specific design pages.
-        isActive = pathname.startsWith('/projects') || /^\/designs\/.+/.test(pathname);
-      } else if (link.href === '/designs') {
-        // "Design Repo" is active only on the /designs page.
-        isActive = pathname === '/designs';
       } else {
         isActive = pathname.startsWith(link.href);
       }
