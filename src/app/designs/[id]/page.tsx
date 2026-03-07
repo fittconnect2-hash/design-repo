@@ -112,7 +112,7 @@ export default function DesignDetailsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
           <Button asChild variant="ghost" className="pl-0">
           <Link href="/designs" className="flex items-center gap-2">

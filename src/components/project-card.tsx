@@ -107,7 +107,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="group flex flex-col overflow-hidden transition-all hover:shadow-lg">
+      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <CardHeader className="flex flex-row items-start justify-between">
           <CardTitle className="text-xl">{project.name}</CardTitle>
           <DropdownMenu>

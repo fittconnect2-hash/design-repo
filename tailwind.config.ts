@@ -9,6 +9,11 @@ export default {
   ],
   theme: {
     extend: {
+      backgroundImage: {
+        'gradient-icon-1': 'linear-gradient(to right, hsl(var(--chart-1)), hsl(var(--chart-2)))',
+        'gradient-icon-2': 'linear-gradient(to right, hsl(var(--chart-3)), hsl(var(--chart-4)))',
+        'gradient-icon-3': 'linear-gradient(to right, hsl(var(--chart-5)), hsl(var(--primary)))',
+      },
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Sora', 'sans-serif'],

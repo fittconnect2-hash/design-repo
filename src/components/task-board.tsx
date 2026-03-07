@@ -77,7 +77,7 @@ function TaskCard({ task, onTaskClick, onTaskDoubleClick }: { task: Task & { id:
             onDragStart={onDragStart}
             onClick={() => onTaskClick(task)}
             onDoubleClick={() => onTaskDoubleClick(task)}
-            className="mb-4 p-4 cursor-grab active:cursor-grabbing hover:bg-accent transition-colors"
+            className="mb-4 p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
         >
             <div className="flex justify-between items-start">
                 <div className="flex-1 pr-2">

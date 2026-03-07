@@ -79,7 +79,7 @@ export default function SharePage() {
     : "A collection of all public designs in the workspace.";
 
   return (
-    <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10 w-full">
+    <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10 w-full animate-in fade-in-0 duration-500">
       <div className="mx-auto w-full">
         <header className="mb-8">
             <h1 className="text-4xl font-headline font-bold tracking-tight">{pageTitle}</h1>

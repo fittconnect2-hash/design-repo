@@ -54,7 +54,7 @@ export default function TaskPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
       <Button asChild variant="ghost" className="pl-0">
         <Link href="/tasks" className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />

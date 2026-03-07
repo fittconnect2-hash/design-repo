@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .gradient-icon {
+    @apply bg-clip-text text-transparent;
+  }
+}
+
 body {
   font-family: 'Inter', sans-serif;
 }

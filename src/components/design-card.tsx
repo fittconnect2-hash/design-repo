@@ -130,7 +130,7 @@ export function DesignCard({ design }: DesignCardProps) {
 
   return (
     <>
-      <Card className="group flex flex-col overflow-hidden transition-all hover:shadow-lg">
+      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <CardHeader className="p-0">
           <div className="relative aspect-video w-full overflow-hidden">
             <Image
