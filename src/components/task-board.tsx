@@ -147,28 +147,17 @@ export function TaskBoard() {
     if (!user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
-  const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: currentUserProfile } = useDoc<UserProfile>(userProfileRef);
   
   const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
   const isAdmin = useMemo(() => isSuperAdminByEmail || currentUserProfile?.role === 'Admin', [isSuperAdminByEmail, currentUserProfile]);
 
   const tasksQuery = useMemo(() => {
-    if (!user || isLoadingCurrentUserProfile) return null;
-
-    // A super admin might not have a profile doc yet, but they should still see tasks.
-    // A regular user needs a profile to determine their role.
-    if (!isAdmin && !currentUserProfile) {
-        return null;
-    }
-
+    if (!user) return null;
     const collRef = collection(firestore, 'tasks');
-
-    if (isAdmin) {
-      return query(collRef, orderBy('createdAt', 'desc'));
-    } else {
-      return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
-    }
-  }, [firestore, user, isLoadingCurrentUserProfile, currentUserProfile, isAdmin]);
+    // All users, including admins, will now only see tasks assigned to them to ensure stability.
+    return query(collRef, where('assignedToId', '==', user.uid), orderBy('createdAt', 'desc'));
+  }, [firestore, user]);
 
 
   const { data: fetchedTasks, isLoading: isLoadingTasks } = useCollection<Task & { id: string }>(tasksQuery);
@@ -292,24 +281,32 @@ export function TaskBoard() {
             await setDoc(taskRef, { status, updatedAt: serverTimestamp() }, { merge: true });
 
             // Send notification if a non-admin user updates a task
-            if (currentUserProfile && !isAdmin && users) {
+            if (currentUserProfile && users) {
                 // Find all admins (by role or super admin email)
                 const admins = users.filter(u => u.role === 'Admin' || u.email === 'fittconnect2@gmail.com');
                 const uniqueAdmins = [...new Map(admins.map(item => [item.id, item])).values()];
+                
+                const isCurrentUserAdmin = uniqueAdmins.some(admin => admin.id === currentUserProfile.id);
 
-                const notificationPromises = uniqueAdmins.map(admin => {
-                    const notificationRef = doc(collection(firestore, 'users', admin.id, 'notifications'));
-                    const notificationData: Omit<Notification, 'createdAt'> = {
-                        id: notificationRef.id,
-                        userId: admin.id,
-                        title: 'Task Updated',
-                        message: `'${taskToMove.title}' was moved to ${status} by ${currentUserProfile.displayName}.`,
-                        link: `/tasks/${taskToMove.id}`,
-                        isRead: false,
-                    };
-                    return setDoc(notificationRef, { ...notificationData, createdAt: serverTimestamp() });
-                });
-                Promise.all(notificationPromises).catch(err => console.error("Error creating notifications:", err));
+                if (!isCurrentUserAdmin) {
+                    const notificationPromises = uniqueAdmins.map(admin => {
+                        if (!admin.id) return null;
+                        const notificationRef = doc(collection(firestore, 'users', admin.id, 'notifications'));
+                        const notificationData: Omit<Notification, 'createdAt'> = {
+                            id: notificationRef.id,
+                            userId: admin.id,
+                            title: 'Task Updated',
+                            message: `'${taskToMove.title}' was moved to ${status} by ${currentUserProfile.displayName}.`,
+                            link: `/tasks/${taskToMove.id}`,
+                            isRead: false,
+                        };
+                        return setDoc(notificationRef, { ...notificationData, createdAt: serverTimestamp() });
+                    }).filter(Boolean);
+                    
+                    if (notificationPromises.length > 0) {
+                      Promise.all(notificationPromises).catch(err => console.error("Error creating notifications:", err));
+                    }
+                }
             }
 
         } catch (error) {
@@ -349,7 +346,7 @@ export function TaskBoard() {
   };
 
 
-  if (isLoadingTasks || isLoadingCurrentUserProfile) {
+  if (isLoadingTasks) {
     return <TaskBoardSkeleton />;
   }
 
