@@ -2,19 +2,17 @@
  * # Firestore Security Rules for DesignDock
  *
  * ## Core Philosophy
- * This ruleset allows any authenticated user to read all projects and designs, fostering
+ * This ruleset allows any user to read all projects and public designs, fostering
  * a collaborative environment. Write access (`create`, `update`, `delete`) is strictly
  * controlled, limited to the document owner or an administrator.
  *
  * ## Key Security Decisions
  * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
  * - **Admin Role:** Users with `role == 'Admin'` in their user profile have elevated privileges.
- * - **Collaborative Reads:** All authenticated users (`isSignedIn()`) can read from the `/projects`
- *   and `/designs` collections.
+ * - **Public Reads:** All users, authenticated or not, can read from the `/projects` collection.
+ *   They can also query the `/designs` collection and read any document where `isPublic == true`.
  * - **Strict Write Ownership:** Write operations are only granted if the requesting user's UID
  *   matches the `userId` field in the document, or if the user is an admin.
- * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
- *   share page (`/share/{userId}`).
  * - **Stale Rule Fix:** Added a comment to force redeployment and fix potential stale rules.
  */
 rules_version = '2';
@@ -81,8 +79,8 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      // Any signed-in user can read projects.
-      allow get, list: if isSignedIn();
+      // Any user, authenticated or not, can read projects.
+      allow get, list: if true;
       
       // Only owner or admin can write.
       allow create: if isOwner(request.resource.data.userId) || isAdmin();
