@@ -87,27 +87,16 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   }, [designs]);
 
   const projectsQuery = React.useMemo(() => {
-    if (!auth.currentUser) return null;
+    if (isPublic || !auth.currentUser) return null;
     return query(collection(firestore, 'users', auth.currentUser.uid, 'projects'));
-  }, [firestore, auth.currentUser]);
+  }, [firestore, auth.currentUser, isPublic]);
 
   const { data: projects } = useCollection<Project>(projectsQuery);
 
   const projectMap = React.useMemo(() => {
-    if (isPublic) {
-      // In public view, derive from the designs themselves
-      const map = new Map<string, string>();
-      designs.forEach(d => {
-        if (d.projectId && d.projectName) {
-          map.set(d.projectId, d.projectName);
-        }
-      });
-      return map;
-    }
-    // In private view, use the fetched projects
-    if (!projects) return new Map();
+    if (isPublic || !projects) return new Map();
     return new Map(projects.map(p => [p.id, p.name]));
-  }, [projects, designs, isPublic]);
+  }, [projects, isPublic]);
 
   const handleDeleteConfirm = () => {
     if (designToDelete) {
@@ -343,7 +332,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                     />
                   </TableCell>
                   <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
-                   <TableCell className="hidden md:table-cell text-muted-foreground">{projectMap.get(design.projectId) || design.projectName || 'N/A'}</TableCell>
+                   <TableCell className="hidden md:table-cell text-muted-foreground">{isPublic ? design.projectName || 'N/A' : projectMap.get(design.projectId) || 'N/A'}</TableCell>
                   
                   {isPublic ? (
                     <>
@@ -480,7 +469,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       <div>
                           <div className="font-semibold text-foreground">Project</div>
-                          <div className="text-muted-foreground">{projectMap.get(designToView.projectId) || 'N/A'}</div>
+                          <div className="text-muted-foreground">{isPublic ? designToView.projectName || 'N/A' : projectMap.get(designToView.projectId) || 'N/A'}</div>
                       </div>
                       <div>
                           <div className="font-semibold text-foreground">Version</div>

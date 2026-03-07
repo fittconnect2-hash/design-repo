@@ -64,7 +64,7 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         <header className="mb-8">
             <h1 className="text-4xl font-headline font-bold tracking-tight">Shared Designs</h1>
             <p className="text-muted-foreground mt-1">A publicly shared collection of designs.</p>
