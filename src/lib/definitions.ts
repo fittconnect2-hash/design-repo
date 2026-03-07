@@ -1,6 +1,8 @@
 export type Design = {
   userId: string;
   name: string;
+  projectName: string;
+  version: string;
   description: string;
   figmaLink: string;
   prototypeUrl: string;

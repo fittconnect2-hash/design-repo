@@ -32,6 +32,7 @@ import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  projectName: z.string().min(2, { message: 'Project name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }),
   figmaLink: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -56,8 +57,9 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const auth = useAuth();
   const router = useRouter();
 
-  const defaultValues: DesignFormValues = {
+  const defaultValues: Partial<DesignFormValues> = {
     name: design?.name || '',
+    projectName: design?.projectName || '',
     description: design?.description || '',
     imageUrl: design?.imageUrl || '',
     figmaLink: design?.figmaLink || '',
@@ -91,22 +93,27 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
     try {
       if (design) {
         // Update existing design
+        const currentVersion = design.version || '1.0';
+        const versionParts = currentVersion.split('.').map(Number);
+        const newVersion = `${versionParts[0]}.${(versionParts[1] || 0) + 1}`;
+
         const designRef = doc(firestore, 'users', uid, 'designProjects', design.id);
         const dataToUpdate = {
           ...baseData,
+          version: newVersion,
           updatedAt: serverTimestamp(),
         };
         await setDoc(designRef, dataToUpdate, { merge: true });
         toast({ title: 'Success', description: 'Design updated successfully. Refreshing...' });
         
-        // Hard navigate to the detail page to ensure fresh data
         window.location.assign(`/designs/${design.id}`);
       } else {
         // Create new design
         const collectionRef = collection(firestore, 'users', uid, 'designProjects');
-        const newDocRef = doc(collectionRef); // Firestore generates the ID
+        const newDocRef = doc(collectionRef);
         const dataToCreate = {
           ...baseData,
+          version: '1.0',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -114,14 +121,13 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         await setDoc(newDocRef, dataToCreate);
         toast({ title: 'Success', description: 'Design created. Refreshing project list...' });
         
-        // Hard refresh the current page to ensure the list is up-to-date
         window.location.reload();
       }
     } catch (error: unknown) {
       console.error("Operation failed:", error);
       const errorMessage = error instanceof Error ? error.message : 'Could not save the project.';
       toast({ variant: 'destructive', title: 'Operation Failed', description: errorMessage });
-      setIsSubmitting(false); // Only re-enable form on error
+      setIsSubmitting(false);
     }
   };
 
@@ -187,7 +193,6 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         </div>
       );
     } catch (e) {
-      // Invalid URL format, let Zod handle the message
       return null;
     }
   }, [imageUrlValue, form]);
@@ -196,12 +201,25 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const formContent = (
       <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+             <FormField
+              control={form.control}
+              name="projectName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Marketing Website" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Project Name</FormLabel>
+                  <FormLabel>Design Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., E-commerce Redesign" {...field} />
                   </FormControl>
@@ -325,7 +343,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{design ? 'Edit Design Project' : 'Add New Design Project'}</CardTitle>
+        <CardTitle>{design ? 'Edit Design' : 'Add New Design'}</CardTitle>
       </CardHeader>
       <CardContent>
         {formContent}

@@ -59,6 +59,14 @@
           "type": "string",
           "description": "A detailed description of the design project."
         },
+        "projectName": {
+          "type": "string",
+          "description": "The name of the parent project this design belongs to, used for grouping."
+        },
+        "version": {
+          "type": "string",
+          "description": "The version of the design project, e.g., '1.0'."
+        },
         "figmaLink": {
           "type": "string",
           "description": "URL to the Figma design file for this project.",
@@ -97,6 +105,8 @@
         "userId",
         "name",
         "description",
+        "projectName",
+        "version",
         "figmaLink",
         "prototypeUrl",
         "imageUrl",

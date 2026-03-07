@@ -4,6 +4,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Eye, Share2, Figma, ExternalLink } from 'lucide-react';
+import { format } from 'date-fns';
 
 import type { Design } from '@/lib/definitions';
 import {
@@ -25,7 +26,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogFooter,
-  DialogClose,
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -48,6 +48,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -116,15 +117,9 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleViewModalOpenChange = (isOpen: boolean) => {
     setIsViewModalOpen(isOpen);
     if (!isOpen) {
-      // THIS IS THE FIX:
-      // When the modal closes, we force the body's pointer-events back to 'auto'.
-      // This is wrapped in a timeout to ensure it runs *after* Radix's own (buggy)
-      // cleanup logic, winning the race condition.
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
-      
-      // Delay clearing data to allow for exit animation before content disappears
       setTimeout(() => {
         setDesignToView(null);
       }, 150);
@@ -134,8 +129,6 @@ export function DesignsTable({ designs }: DesignsTableProps) {
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
-       // THIS IS THE FIX:
-      // Same logic for the delete modal.
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
@@ -149,10 +142,11 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px] hidden md:table-cell">Image</TableHead>
+              <TableHead className="w-[80px] hidden sm:table-cell">Image</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead className="hidden lg:table-cell">Description</TableHead>
-              <TableHead className="hidden sm:table-cell">Tags</TableHead>
+              <TableHead className="hidden lg:table-cell">Tags</TableHead>
+              <TableHead className="hidden md:table-cell">Version</TableHead>
+              <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
               <TableHead className="text-right w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -160,7 +154,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
             {designs && designs.length > 0 ? (
               designs.map(design => (
                 <TableRow key={design.id}>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden sm:table-cell">
                     <Image
                       src={design.imageUrl || `https://picsum.photos/seed/${design.id}/80/60`}
                       alt={design.name || 'Design thumbnail'}
@@ -171,15 +165,18 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                     />
                   </TableCell>
                   <TableCell className="font-medium">{design.name || 'Untitled Project'}</TableCell>
-                  <TableCell className="hidden lg:table-cell max-w-sm truncate">
-                    {design.description || 'No description available.'}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {design.tags?.slice(0, 3).map((tag, index) => (
                         <Badge key={`${design.id}-${tag}-${index}`} variant="secondary">{tag}</Badge>
                       ))}
                     </div>
+                  </TableCell>
+                   <TableCell className="hidden md:table-cell">
+                    <Badge variant="outline">v{design.version}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {design.updatedAt ? format(design.updatedAt.toDate(), 'PP') : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -224,8 +221,8 @@ export function DesignsTable({ designs }: DesignsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No design projects yet. Start by adding one!
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No designs in this project yet.
                 </TableCell>
               </TableRow>
             )}
@@ -233,16 +230,15 @@ export function DesignsTable({ designs }: DesignsTableProps) {
         </Table>
       </div>
 
-      {/* View Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
         <DialogContent className="sm:max-w-3xl p-0">
           {designToView ? (
             <>
-              <DialogHeader className="p-6 pb-0">
+              <DialogHeader className="p-6 pb-4">
                 <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
-                <DialogDescription className="text-base text-foreground/80 pt-4">{designToView.description}</DialogDescription>
+                <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-10rem)]">
+              <ScrollArea className="max-h-[calc(100vh-12rem)]">
                 <div className="px-6 pb-6 space-y-6">
                   <div className="relative aspect-video w-full">
                     <Image
@@ -260,6 +256,23 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                     ))}
                   </div>
                   
+                  <Separator />
+
+                   <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                          <div className="font-semibold text-foreground">Version</div>
+                          <div className="text-muted-foreground">v{designToView.version}</div>
+                      </div>
+                      <div>
+                          <div className="font-semibold text-foreground">Created</div>
+                          <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
+                      </div>
+                      <div>
+                          <div className="font-semibold text-foreground">Last Updated</div>
+                          <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
+                      </div>
+                  </div>
+
                   <Separator />
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -288,19 +301,17 @@ export function DesignsTable({ designs }: DesignsTableProps) {
                   </div>
                 </div>
               </ScrollArea>
-              <DialogFooter className="p-6 pt-0">
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary">
-                    Close
+              <DialogFooter className="p-6 pt-4 border-t">
+                  <Button type="button" variant="secondary" asChild>
+                    <Link href={`/designs/${designToView.id}`}>View Full Page</Link>
                   </Button>
-                </DialogClose>
+                  <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
               </DialogFooter>
             </>
           ) : null}
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
         <DialogContent>
           <DialogHeader>
@@ -310,7 +321,7 @@ export function DesignsTable({ designs }: DesignsTableProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => handleDeleteModalOpenChange(false)}>Cancel</Button>
             <Button onClick={handleDeleteConfirm} variant="destructive">
               Delete
             </Button>
