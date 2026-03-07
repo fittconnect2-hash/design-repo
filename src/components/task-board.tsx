@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { PlusCircle, Loader2, User } from 'lucide-react';
+import { PlusCircle, Loader2, User, Share2 } from 'lucide-react';
 
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import type { Task, Project, UserProfile } from '@/lib/definitions';
@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 type TaskStatus = 'Todo' | 'In Progress' | 'Done';
 
@@ -140,6 +141,7 @@ export function TaskBoard() {
   const [taskToEdit, setTaskToEdit] = useState<(Task & { id: string }) | null>(null);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const { toast } = useToast();
 
   const tasksQuery = useMemo(() => {
     const collRef = collection(firestore, 'tasks');
@@ -178,7 +180,7 @@ export function TaskBoard() {
             title: selectedTask.title,
             description: selectedTask.description || '',
             projectId: selectedTask.projectId,
-            assignedToId: selectedTask.assignedToId || '',
+            assignedToId: selectedTask.assignedToId || 'unassigned',
         });
     }
   }, [selectedTask, form]);
@@ -276,6 +278,23 @@ export function TaskBoard() {
       setIsEditingDetails(false); // Reset edit state on close
     }
   };
+  
+  const handleShareTask = (taskId: string) => {
+    const url = `${window.location.origin}/tasks/${taskId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: 'Link Copied!',
+        description: 'The task link has been copied to your clipboard.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to copy link.',
+      });
+    });
+  };
 
 
   if (isLoadingTasks) {
@@ -321,14 +340,22 @@ export function TaskBoard() {
                             <span>{selectedTask.assignedToName ? `Assigned to ${selectedTask.assignedToName}` : 'Unassigned'}</span>
                         </div>
                     </div>
-                    <DialogFooter className="sm:justify-between">
-                         <Button onClick={(e) => {
-                            e.stopPropagation();
-                            setIsDetailsDialogOpen(false);
-                            setTimeout(() => setIsAddDesignSheetOpen(true), 150);
-                        }}>
-                           <PlusCircle className="mr-2 h-4 w-4" /> Add Design Repo
-                        </Button>
+                    <DialogFooter className="sm:justify-between items-center gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                            <Button variant="outline" onClick={(e) => {
+                                e.stopPropagation();
+                                if (selectedTask) handleShareTask(selectedTask.id);
+                            }}>
+                                <Share2 className="mr-2 h-4 w-4" /> Share
+                            </Button>
+                            <Button onClick={(e) => {
+                                e.stopPropagation();
+                                setIsDetailsDialogOpen(false);
+                                setTimeout(() => setIsAddDesignSheetOpen(true), 150);
+                            }}>
+                               <PlusCircle className="mr-2 h-4 w-4" /> Add Design Repo
+                            </Button>
+                        </div>
                         <Button variant="outline" onClick={(e) => { e.stopPropagation(); handleDialogClose(false)}}>Close</Button>
                     </DialogFooter>
                 </div>
