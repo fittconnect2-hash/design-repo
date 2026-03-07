@@ -126,7 +126,14 @@ export function SidebarNav() {
       <SidebarGroup>
         <SidebarGroupLabel>Insights</SidebarGroupLabel>
         <SidebarMenu>
-          {isAdmin ? renderLinks(insightsLinks, "text-chart-1") : renderLinks(insightsLinks.filter(l => l.href === '/'), "text-chart-1")}
+          {isAdmin
+            ? renderLinks(insightsLinks, "text-chart-1")
+            : renderLinks(
+                insightsLinks.filter(
+                  (l) => l.href === "/" || l.href === "/tasks"
+                ),
+                "text-chart-1"
+              )}
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup>
