@@ -136,9 +136,10 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     
     const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', designToTogglePublic.id);
     const newPublicState = !designToTogglePublic.isPublic;
+    const projectName = projectMap.get(designToTogglePublic.projectId) || designToTogglePublic.projectName || '';
 
     try {
-      await setDoc(designRef, { isPublic: newPublicState }, { merge: true });
+      await setDoc(designRef, { isPublic: newPublicState, projectName }, { merge: true });
       toast({
         title: 'Success',
         description: `Design has been made ${newPublicState ? 'public' : 'private'}.`,
@@ -147,7 +148,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
        const permissionError = new FirestorePermissionError({
           path: designRef.path,
           operation: 'update',
-          requestResourceData: { isPublic: newPublicState },
+          requestResourceData: { isPublic: newPublicState, projectName },
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
@@ -167,8 +168,14 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
 
     const updatePromises = selectedIds.map(id => {
+        const designToUpdate = designs.find(d => d.id === id);
+        if (!designToUpdate) {
+            console.warn(`Could not find design with id ${id} for bulk update.`);
+            return Promise.resolve();
+        }
+        const projectName = projectMap.get(designToUpdate.projectId) || designToUpdate.projectName || '';
         const designRef = doc(firestore, 'users', auth.currentUser!.uid, 'designs', id);
-        return setDoc(designRef, { isPublic }, { merge: true });
+        return setDoc(designRef, { isPublic, projectName }, { merge: true });
     });
 
     try {
