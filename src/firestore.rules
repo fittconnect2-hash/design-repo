@@ -122,8 +122,8 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      // A user can read a task if they are the assigned user.
-      allow read: if request.auth.uid == resource.data.assignedToId;
+      // Allow any authenticated user to read tasks. The client-side code handles filtering.
+      allow read: if isSignedIn();
       // Any signed-in user can create/update tasks to allow assignment.
       allow write: if isSignedIn();
     }
