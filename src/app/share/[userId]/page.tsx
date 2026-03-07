@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { collection, orderBy, query, where } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore } from '@/firebase';
 import { DesignsTable } from '@/components/designs-table';
 import type { Design, Project } from '@/lib/definitions';
@@ -64,7 +64,7 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10">
-      <div className="mx-auto">
+      <div className="mx-auto w-full">
         <header className="mb-8">
             <h1 className="text-4xl font-headline font-bold tracking-tight">Shared Designs</h1>
             <p className="text-muted-foreground mt-1">A publicly shared collection of designs.</p>

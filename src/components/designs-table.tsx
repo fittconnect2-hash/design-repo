@@ -132,7 +132,9 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     
     const designRef = doc(firestore, 'users', auth.currentUser.uid, 'designs', designToTogglePublic.id);
     const newPublicState = !designToTogglePublic.isPublic;
-    const projectName = projectMap.get(designToTogglePublic.projectId) || designToTogglePublic.projectName || '';
+    
+    const project = projectsProp?.find(p => p.id === designToTogglePublic.projectId);
+    const projectName = project?.name || designToTogglePublic.projectName || '';
 
     try {
       await setDoc(designRef, { isPublic: newPublicState, projectName }, { merge: true });
@@ -169,7 +171,10 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
             console.warn(`Could not find design with id ${id} for bulk update.`);
             return Promise.resolve();
         }
-        const projectName = projectMap.get(designToUpdate.projectId) || designToUpdate.projectName || '';
+        
+        const project = projectsProp?.find(p => p.id === designToUpdate.projectId);
+        const projectName = project?.name || designToUpdate.projectName || '';
+
         const designRef = doc(firestore, 'users', auth.currentUser!.uid, 'designs', id);
         return setDoc(designRef, { isPublic, projectName }, { merge: true });
     });
@@ -335,7 +340,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                     />
                   </TableCell>
                   <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
-                   <TableCell className="hidden md:table-cell text-muted-foreground">{isPublic ? design.projectName || 'N/A' : projectMap.get(design.projectId) || 'N/A'}</TableCell>
+                   <TableCell className="hidden md:table-cell text-muted-foreground">{design.projectName || 'N/A'}</TableCell>
                   
                   {isPublic ? (
                     <>
@@ -472,7 +477,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       <div>
                           <div className="font-semibold text-foreground">Project</div>
-                          <div className="text-muted-foreground">{isPublic ? designToView.projectName || 'N/A' : projectMap.get(designToView.projectId) || 'N/A'}</div>
+                          <div className="text-muted-foreground">{designToView.projectName || 'N/A'}</div>
                       </div>
                       <div>
                           <div className="font-semibold text-foreground">Version</div>
