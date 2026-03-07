@@ -11,8 +11,6 @@
  * - **Admin Role:** Users with `role == 'Admin'` in their profile have elevated privileges.
  * - **Collaborative Reads:** All authenticated users (`isSignedIn()`) can read from the `/projects`
  *   and `/designs` collections.
- * - **Strict Write Ownership:** Write operations are only granted if the requesting user's UID
- *   matches the `userId` field in the document, or if the user is an admin.
  * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
  *   share page (`/share/{userId}`).
  * - **Stale Rule Fix:** Added a comment to force redeployment and fix potential stale rules.
@@ -127,6 +125,15 @@ service cloud.firestore {
       
       // Logs are immutable.
       allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      // A user can read, update (mark as read), and delete their own notifications.
+      allow get, update, delete: if isOwner(resource.data.userId);
+      // Any signed-in user can create a notification for someone else.
+      allow create: if isSignedIn();
+      // Users cannot list all notifications.
+      allow list: if false;
     }
   }
 }

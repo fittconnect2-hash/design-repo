@@ -13,8 +13,7 @@ import {
 import { GlobalSearch } from '@/components/global-search';
 import { UserNav } from '@/components/user-nav';
 import { SidebarNav } from '@/components/sidebar-nav';
-import { Button } from '@/components/ui/button';
-import { Bell } from 'lucide-react';
+import { UserNotifications } from './user-notifications';
 
 export function MainLayout({ children }: { children: ReactNode }) {
   return (
@@ -36,10 +35,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <SidebarTrigger className="sm:hidden" />
           <GlobalSearch />
-          <Button variant="outline" size="icon" className="h-8 w-8">
-            <Bell className="h-4 w-4" />
-            <span className="sr-only">Toggle notifications</span>
-          </Button>
+          <UserNotifications />
           <UserNav />
         </header>
         <main className="flex-1 p-4 sm:px-6 sm:py-0">

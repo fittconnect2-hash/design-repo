@@ -8,8 +8,8 @@ import { z } from 'zod';
 import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { PlusCircle, Loader2, User, Share2 } from 'lucide-react';
 
-import { useCollection, useFirestore, useUser } from '@/firebase';
-import type { Task, Project, UserProfile } from '@/lib/definitions';
+import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
+import type { Task, Project, UserProfile, Notification } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -143,6 +143,12 @@ export function TaskBoard() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const { toast } = useToast();
 
+  const userProfileRef = useMemo(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<UserProfile>(userProfileRef);
+
   const tasksQuery = useMemo(() => {
     const collRef = collection(firestore, 'tasks');
     return query(collRef, orderBy('createdAt', 'desc'));
@@ -260,6 +266,24 @@ export function TaskBoard() {
         const taskRef = doc(firestore, 'tasks', taskId);
         try {
             await setDoc(taskRef, { status }, { merge: true });
+
+            if (currentUserProfile && currentUserProfile.role === 'Staff Designer' && users) {
+                const admins = users.filter(u => u.role === 'Admin');
+                const notificationPromises = admins.map(admin => {
+                    const notificationRef = doc(collection(firestore, 'notifications'));
+                    const notificationData: Omit<Notification, 'createdAt'> = {
+                        id: notificationRef.id,
+                        userId: admin.id,
+                        title: 'Task Updated',
+                        message: `'${taskToMove.title}' was moved to ${status} by ${currentUserProfile.displayName}.`,
+                        link: `/tasks/${taskToMove.id}`,
+                        isRead: false,
+                    };
+                    return setDoc(notificationRef, { ...notificationData, createdAt: serverTimestamp() });
+                });
+                Promise.all(notificationPromises).catch(err => console.error("Error creating notifications:", err));
+            }
+
         } catch (error) {
             // Revert optimistic update on error
             setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? { ...t, status: taskToMove.status } : t));
@@ -297,7 +321,7 @@ export function TaskBoard() {
   };
 
 
-  if (isLoadingTasks) {
+  if (isLoadingTasks || isLoadingCurrentUserProfile) {
     return <TaskBoardSkeleton />;
   }
 
@@ -454,7 +478,7 @@ export function TaskBoard() {
       </Dialog>
       
       <Sheet open={isAddDesignSheetOpen} onOpenChange={setIsAddDesignSheetOpen}>
-          <SheetContent className="p-0 sm:max-w-2xl">
+          <SheetContent className="p-0 sm:max-w-2xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right">
             <SheetHeader className="p-6 pb-4">
               <SheetTitle>Add New Design</SheetTitle>
               <SheetDescription>
@@ -474,7 +498,7 @@ export function TaskBoard() {
       </Sheet>
 
       <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
-        <SheetContent className="p-0 sm:max-w-md">
+        <SheetContent className="p-0 sm:max-w-md data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right">
           <SheetHeader className="p-6 pb-4">
             <SheetTitle>Edit Task</SheetTitle>
             <SheetDescription>

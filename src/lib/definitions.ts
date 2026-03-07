@@ -66,3 +66,13 @@ export type Task = {
   createdAt: any;
   updatedAt: any;
 }
+
+export type Notification = {
+  id: string;
+  userId: string; // recipient
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: any;
+};
