@@ -130,10 +130,10 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      // Admins can read all notifications. Users can read, update, and delete their own.
-      // This rule requires a client-side query with `where('userId', '==', request.auth.uid)` for non-admins.
-      allow read, update, delete: if isAdmin() || isOwner(resource.data.userId);
-      // Any signed-in user can create a notification for someone else.
+      // Users can read, update, and delete their own notifications.
+      // This rule requires a client-side query with `where('userId', '==', request.auth.uid)`.
+      allow read, update, delete: if isOwner(resource.data.userId);
+      // Any signed-in user can create a notification (e.g. for an admin).
       allow create: if isSignedIn();
     }
   }
