@@ -113,6 +113,11 @@ service cloud.firestore {
       allow delete: if isAdmin() || isSignedIn();
     }
 
+    match /tasks/{taskId} {
+      // Any signed-in user can read, create, update, and delete tasks to foster collaboration.
+      allow read, write: if isSignedIn();
+    }
+
     match /auditLogs/{auditLogId} {
       // Only admins can read audit logs.
       allow get, list: if isAdmin();

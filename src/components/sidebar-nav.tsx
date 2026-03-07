@@ -13,11 +13,11 @@ import {
 import {
   LayoutDashboard,
   BarChart3,
-  BookText,
   History,
   FolderKanban,
   Archive,
   Users,
+  Trello,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDoc, useFirestore, useUser } from "@/firebase";
@@ -34,7 +34,7 @@ type NavLink = {
 const insightsLinks: NavLink[] = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
     { href: "/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/reports", label: "Report", icon: BookText },
+    { href: "/tasks", label: "Tasks", icon: Trello },
 ];
 
 const workspaceLinks: NavLink[] = [

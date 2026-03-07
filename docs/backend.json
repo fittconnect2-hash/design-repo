@@ -292,6 +292,67 @@
         "details",
         "timestamp"
       ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task within a project.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Task."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this task belongs to."
+        },
+        "projectName": {
+          "type": "string",
+          "description": "Denormalized name of the project for easier display."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the task.",
+          "enum": [
+            "Todo",
+            "In Progress",
+            "Done"
+          ]
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created this task."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the task was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the task was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "projectName",
+        "title",
+        "status",
+        "userId",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "auth": {
@@ -378,6 +439,22 @@
             {
               "name": "auditLogId",
               "description": "The unique identifier for the audit log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores individual tasks in a root collection.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The unique identifier for the task."
             }
           ]
         }

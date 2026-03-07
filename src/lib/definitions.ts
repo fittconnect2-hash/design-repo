@@ -52,3 +52,15 @@ export type AuditLog = {
   details: string;
   timestamp: any;
 };
+
+export type Task = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  title: string;
+  description?: string;
+  status: 'Todo' | 'In Progress' | 'Done';
+  userId: string; // creator
+  createdAt: any;
+  updatedAt: any;
+}
