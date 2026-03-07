@@ -59,6 +59,7 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      email: '',
       role: 'Staff Designer',
     },
     mode: 'onChange',
