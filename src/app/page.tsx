@@ -52,11 +52,11 @@ export default function Home() {
         </Card>
       ) : hasDesigns ? (
         <div className="space-y-4">
-          <h2 className="text-2xl font-headline font-bold">Your Design Projects</h2>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Your Design Projects</h1>
             <Accordion type="single" collapsible className="w-full" defaultValue={Object.keys(groupedDesigns)[0]}>
               {Object.entries(groupedDesigns).map(([projectName, projectDesigns]) => (
                 <AccordionItem value={projectName} key={projectName}>
-                  <AccordionTrigger className="text-xl font-semibold hover:no-underline">
+                  <AccordionTrigger className="text-xl font-headline font-semibold hover:no-underline">
                     {projectName} ({projectDesigns.length})
                   </AccordionTrigger>
                   <AccordionContent>
