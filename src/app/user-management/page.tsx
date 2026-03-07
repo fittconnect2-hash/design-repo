@@ -2,18 +2,22 @@
 
 import { useMemo } from 'react';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
+import Link from 'next/link';
 
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/definitions';
 import { UsersTable } from '@/components/users-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 function UserManagementSkeleton() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-10 w-32" />
       </div>
       <Skeleton className="h-96 w-full" />
     </div>
@@ -31,7 +35,9 @@ export default function UserManagementPage() {
 
   const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const isAdmin = userProfile?.role === 'Admin';
+  // An admin is someone with the 'Admin' role or the designated super admin email.
+  const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
+  const isAdmin = userProfile?.role === 'Admin' || isSuperAdminByEmail;
 
   const usersQuery = useMemo(() => {
     // Only create the query if the user is an admin.
@@ -77,8 +83,14 @@ export default function UserManagementPage() {
        <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-headline font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground">Manage all users in your workspace.</p>
+          <p className="text-muted-foreground">Manage all users in your workspace. New users can be added via the signup page.</p>
         </div>
+         <Button asChild>
+          <Link href="/signup" target="_blank">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add User
+          </Link>
+        </Button>
       </div>
 
       {hasUsers ? (
