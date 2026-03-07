@@ -46,9 +46,10 @@ interface DesignFormProps {
   design?: Design & { id: string };
   view?: 'page' | 'sheet';
   onSuccess?: () => void;
+  defaultProjectId?: string;
 }
 
-export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps) {
+export function DesignForm({ design, view = 'page', onSuccess, defaultProjectId }: DesignFormProps) {
   const { toast } = useToast();
   const [isSuggestingTags, setSuggestingTags] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +67,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project & { id: string }>(projectsQuery);
 
   const defaultValues: Partial<DesignFormValues> = {
-    projectId: design?.projectId || '',
+    projectId: design?.projectId || defaultProjectId || '',
     name: design?.name || '',
     description: design?.description || '',
     imageUrl: design?.imageUrl || '',
