@@ -33,12 +33,18 @@ export default function SharePage() {
   const [selectedProjectId, setSelectedProjectId] = useState('all');
 
   const designsQuery = useMemo(() => {
-    if (!userId) return null;
     const collRef = collection(firestore, 'designs');
-    return query(collRef, where('isPublic', '==', true), where('userId', '==', userId));
-  }, [firestore, userId]);
+    // Fetch all public designs. We will filter by user on the client-side
+    // to avoid needing a composite index in Firestore.
+    return query(collRef, where('isPublic', '==', true));
+  }, [firestore]);
 
-  const { data: designs, isLoading } = useCollection<Design & { id: string }>(designsQuery);
+  const { data: allPublicDesigns, isLoading } = useCollection<Design & { id: string }>(designsQuery);
+
+  const designs = useMemo(() => {
+    if (!allPublicDesigns || !userId) return [];
+    return allPublicDesigns.filter(design => design.userId === userId);
+  }, [allPublicDesigns, userId]);
 
   const projects = useMemo(() => {
     if (!designs) return [];
