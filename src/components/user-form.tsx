@@ -20,7 +20,7 @@ import type { UserProfile } from '@/lib/definitions';
 import { Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
@@ -36,7 +36,7 @@ interface UserFormProps {
   onSuccess?: () => void;
 }
 
-export function UserForm({ user, onSuccess }: UserFormProps) {
+export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
@@ -45,9 +45,9 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      displayName: user.displayName || '',
-      email: user.email || '',
-      role: user.role || 'Staff Designer',
+      displayName: userToEdit.displayName || '',
+      email: userToEdit.email || '',
+      role: userToEdit.role || 'Staff Designer',
     },
     mode: 'onChange',
   });
@@ -58,7 +58,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
       return;
     }
     
-    if (user.id === currentUser.uid && values.role !== 'Admin') {
+    if (userToEdit.id === currentUser.uid && values.role !== 'Admin') {
       toast({
         variant: 'destructive',
         title: 'Invalid Action',
@@ -70,7 +70,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
 
     setIsSubmitting(true);
 
-    const userDocRef = doc(firestore, 'users', user.id);
+    const userDocRef = doc(firestore, 'users', userToEdit.id);
     const dataToUpdate = {
       displayName: values.displayName,
       role: values.role,
@@ -79,6 +79,22 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
 
     try {
       await setDoc(userDocRef, dataToUpdate, { merge: true });
+
+      if (userToEdit.role !== values.role) {
+        const auditLogRef = collection(firestore, 'auditLogs');
+        await addDoc(auditLogRef, {
+            userId: currentUser.uid,
+            userDisplayName: currentUser.displayName,
+            userEmail: currentUser.email,
+            action: 'UPDATE_ROLE',
+            entityType: 'User',
+            entityId: userToEdit.id,
+            entityName: values.displayName,
+            details: `User role for '${values.displayName}' changed from '${userToEdit.role}' to '${values.role}'`,
+            timestamp: serverTimestamp(),
+        });
+      }
+
       toast({ title: 'Success', description: 'User profile updated successfully.' });
       
       if (onSuccess) {

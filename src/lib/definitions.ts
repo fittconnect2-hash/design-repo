@@ -39,3 +39,16 @@ export type Invite = {
   role: 'Admin' | 'Staff Designer';
   createdAt?: any;
 };
+
+export type AuditLog = {
+  id: string;
+  userId: string;
+  userDisplayName: string;
+  userEmail: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'INVITE' | 'REVOKE_INVITE' | 'SET_PUBLIC' | 'SET_PRIVATE' | 'UPDATE_ROLE';
+  entityType: 'Project' | 'Design' | 'User' | 'Invite';
+  entityId: string;
+  entityName: string;
+  details: string;
+  timestamp: any;
+};

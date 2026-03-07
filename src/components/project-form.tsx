@@ -24,7 +24,7 @@ import type { Project } from '@/lib/definitions';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, setDoc, serverTimestamp, collection, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, Timestamp, addDoc } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
 import { Calendar } from './ui/calendar';
@@ -86,11 +86,25 @@ export function ProjectForm({ project, view = 'page', onSuccess }: ProjectFormPr
 
     try {
       const projectCollectionRef = collection(firestore, 'projects');
+      const auditLogRef = collection(firestore, 'auditLogs');
       
       if (project) {
         // Update existing project
         const projectRef = doc(projectCollectionRef, project.id);
         await setDoc(projectRef, dataPayload, { merge: true });
+
+        await addDoc(auditLogRef, {
+            userId: uid,
+            userDisplayName: user.displayName,
+            userEmail: user.email,
+            action: 'UPDATE',
+            entityType: 'Project',
+            entityId: project.id,
+            entityName: values.name,
+            details: `User updated project '${values.name}'`,
+            timestamp: serverTimestamp(),
+        });
+
         toast({ title: 'Success', description: 'Project updated successfully.' });
       } else {
         // Create new project
@@ -99,6 +113,19 @@ export function ProjectForm({ project, view = 'page', onSuccess }: ProjectFormPr
           ...dataPayload,
           createdAt: serverTimestamp(),
         });
+
+        await addDoc(auditLogRef, {
+            userId: uid,
+            userDisplayName: user.displayName,
+            userEmail: user.email,
+            action: 'CREATE',
+            entityType: 'Project',
+            entityId: newDocRef.id,
+            entityName: values.name,
+            details: `User created project '${values.name}'`,
+            timestamp: serverTimestamp(),
+        });
+
         toast({ title: 'Success', description: 'Project created.' });
       }
 

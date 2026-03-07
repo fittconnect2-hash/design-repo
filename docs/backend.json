@@ -216,6 +216,82 @@
         "role",
         "createdAt"
       ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Represents an entry in the audit log, recording a significant action taken by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audit log entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who performed the action."
+        },
+        "userDisplayName": {
+          "type": "string",
+          "description": "The display name of the user at the time of the action."
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "The email of the user at the time of the action."
+        },
+        "action": {
+          "type": "string",
+          "description": "The type of action performed.",
+          "enum": [
+            "CREATE",
+            "UPDATE",
+            "DELETE",
+            "INVITE",
+            "REVOKE_INVITE",
+            "SET_PUBLIC",
+            "SET_PRIVATE",
+            "UPDATE_ROLE"
+          ]
+        },
+        "entityType": {
+          "type": "string",
+          "description": "The type of entity that was affected.",
+          "enum": [
+            "Project",
+            "Design",
+            "User",
+            "Invite"
+          ]
+        },
+        "entityId": {
+          "type": "string",
+          "description": "The ID of the entity that was affected."
+        },
+        "entityName": {
+          "type": "string",
+          "description": "The name or identifier of the entity for display purposes."
+        },
+        "details": {
+          "type": "string",
+          "description": "A human-readable description of the action."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the action occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userDisplayName",
+        "userEmail",
+        "action",
+        "entityType",
+        "entityId",
+        "details",
+        "timestamp"
+      ]
     }
   },
   "auth": {
@@ -289,8 +365,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/auditLogs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Stores a log of all significant user activities for auditing purposes.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "The unique identifier for the audit log entry."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure separates Users, Projects, Designs, and Invites into distinct root-level collections. This flat structure facilitates efficient, app-wide queries, allowing any authenticated user to view all projects and designs to foster collaboration. User-specific data is stored in `/users/{userId}`. Write access to projects and designs is controlled by a `userId` field within each document, ensuring that only the owner or an administrator can modify content. This design supports secure, independent authorization for write operations while enabling open read access for a collaborative workspace."
+    "reasoning": "The Firestore structure separates Users, Projects, Designs, and Invites into distinct root-level collections. This flat structure facilitates efficient, app-wide queries, allowing any authenticated user to view all projects and designs to foster collaboration. User-specific data is stored in `/users/{userId}`. Write access to projects and designs is controlled by a `userId` field within each document, ensuring that only the owner or an administrator can modify content. This design supports secure, independent authorization for write operations while enabling open read access for a collaborative workspace. Audit logs are stored in a separate root collection with admin-only read access."
   }
 }

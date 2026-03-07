@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Sheet,
@@ -44,7 +44,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
 
   const { toast } = useToast();
-  const auth = useAuth();
+  const { user } = useUser();
   const firestore = useFirestore();
 
   React.useEffect(() => {
@@ -57,11 +57,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
 
   const handleDeleteConfirm = () => {
-    if (auth.currentUser) {
+    if (user) {
       const projectRef = doc(firestore, 'projects', project.id);
       
       deleteDoc(projectRef)
-        .then(() => {
+        .then(async () => {
+          const auditLogRef = collection(firestore, 'auditLogs');
+          await addDoc(auditLogRef, {
+              userId: user.uid,
+              userDisplayName: user.displayName,
+              userEmail: user.email,
+              action: 'DELETE',
+              entityType: 'Project',
+              entityId: project.id,
+              entityName: project.name,
+              details: `User deleted project '${project.name}'`,
+              timestamp: serverTimestamp(),
+          });
+
           toast({
             title: 'Success',
             description: 'Project deleted successfully.',

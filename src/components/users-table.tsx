@@ -42,7 +42,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Sheet,
   SheetContent,
@@ -77,7 +77,7 @@ export function UsersTable({ users }: UsersTableProps) {
   const [isRevokeModalOpen, setIsRevokeModalOpen] = React.useState(false);
 
   const { toast } = useToast();
-  const auth = useAuth();
+  const { user: currentUser } = useAuth();
   const firestore = useFirestore();
 
   React.useEffect(() => {
@@ -116,10 +116,23 @@ export function UsersTable({ users }: UsersTableProps) {
   };
 
   const handleRevokeConfirm = () => {
-     if (inviteToRevoke && auth.currentUser) {
+     if (inviteToRevoke && currentUser) {
         const inviteRef = doc(firestore, 'invites', inviteToRevoke.id);
         deleteDoc(inviteRef)
-            .then(() => {
+            .then(async () => {
+                const auditLogRef = collection(firestore, 'auditLogs');
+                await addDoc(auditLogRef, {
+                    userId: currentUser.uid,
+                    userDisplayName: currentUser.displayName,
+                    userEmail: currentUser.email,
+                    action: 'REVOKE_INVITE',
+                    entityType: 'Invite',
+                    entityId: inviteToRevoke.id,
+                    entityName: inviteToRevoke.email,
+                    details: `User revoked invitation for '${inviteToRevoke.email}'`,
+                    timestamp: serverTimestamp(),
+                });
+                
                 toast({
                     title: 'Success',
                     description: `Invitation for ${inviteToRevoke.email} has been revoked.`,
@@ -143,8 +156,8 @@ export function UsersTable({ users }: UsersTableProps) {
 
 
   const handleDeleteConfirm = () => {
-    if (userToDelete && auth.currentUser) {
-      if (userToDelete.id === auth.currentUser.uid) {
+    if (userToDelete && currentUser) {
+      if (userToDelete.id === currentUser.uid) {
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -157,7 +170,20 @@ export function UsersTable({ users }: UsersTableProps) {
       const userRef = doc(firestore, 'users', userToDelete.id);
       
       deleteDoc(userRef)
-        .then(() => {
+        .then(async () => {
+          const auditLogRef = collection(firestore, 'auditLogs');
+          await addDoc(auditLogRef, {
+              userId: currentUser.uid,
+              userDisplayName: currentUser.displayName,
+              userEmail: currentUser.email,
+              action: 'DELETE',
+              entityType: 'User',
+              entityId: userToDelete.id,
+              entityName: userToDelete.displayName,
+              details: `User deleted user profile for '${userToDelete.displayName}'`,
+              timestamp: serverTimestamp(),
+          });
+          
           toast({
             title: 'Success',
             description: `User profile for ${userToDelete.displayName} deleted. This does not remove their authentication record.`,

@@ -81,8 +81,8 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      // Any signed-in user can read projects.
-      allow get, list: if isSignedIn();
+      // Any user, authenticated or not, can read projects.
+      allow get, list: if true;
       
       // Only owner or admin can write.
       allow create: if isOwner(request.resource.data.userId) || isAdmin();
@@ -111,6 +111,17 @@ service cloud.firestore {
       allow update: if false;
       // An admin can delete an invite, or a signed-in user can delete the invite they just used.
       allow delete: if isAdmin() || isSignedIn();
+    }
+
+    match /auditLogs/{auditLogId} {
+      // Only admins can read audit logs.
+      allow get, list: if isAdmin();
+      
+      // Any signed-in user can create a log entry for their own actions.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Logs are immutable.
+      allow update, delete: if false;
     }
   }
 }

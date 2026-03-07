@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Wand2, Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { doc, setDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
@@ -97,6 +97,7 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
 
     try {
       const designCollectionRef = collection(firestore, 'designs');
+      const auditLogRef = collection(firestore, 'auditLogs');
 
       if (design) {
         // Update existing design
@@ -127,6 +128,19 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
           updatedAt: serverTimestamp(),
         };
         await setDoc(designRef, dataToUpdate, { merge: true });
+        
+        await addDoc(auditLogRef, {
+            userId: uid,
+            userDisplayName: user.displayName,
+            userEmail: user.email,
+            action: 'UPDATE',
+            entityType: 'Design',
+            entityId: design.id,
+            entityName: values.name,
+            details: `User updated design '${values.name}'`,
+            timestamp: serverTimestamp(),
+        });
+
         toast({ title: 'Success', description: 'Design updated successfully.' });
         
       } else {
@@ -144,6 +158,19 @@ export function DesignForm({ design, view = 'page', onSuccess }: DesignFormProps
         };
 
         await setDoc(newDocRef, dataToCreate);
+
+        await addDoc(auditLogRef, {
+            userId: uid,
+            userDisplayName: user.displayName,
+            userEmail: user.email,
+            action: 'CREATE',
+            entityType: 'Design',
+            entityId: newDocRef.id,
+            entityName: values.name,
+            details: `User created design '${values.name}'`,
+            timestamp: serverTimestamp(),
+        });
+        
         toast({ title: 'Success', description: 'Design created.' });
       }
 

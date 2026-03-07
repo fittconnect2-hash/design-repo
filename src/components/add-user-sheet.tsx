@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc, addDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -87,12 +87,26 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
     };
 
     setDoc(newDocRef, inviteData)
-      .then(() => {
+      .then(async () => {
         setIsSubmitting(false);
         const origin = window.location.origin;
         const link = `${origin}/signup?invite=${newDocRef.id}`;
         setInviteDetails({ link, email: values.email });
         toast({ title: 'Success', description: 'Invitation created.' });
+
+        // Log activity
+        const auditLogRef = collection(firestore, 'auditLogs');
+        await addDoc(auditLogRef, {
+            userId: user.uid,
+            userDisplayName: user.displayName,
+            userEmail: user.email,
+            action: 'INVITE',
+            entityType: 'Invite',
+            entityId: newDocRef.id,
+            entityName: values.email,
+            details: `User invited '${values.email}' with role '${values.role}'`,
+            timestamp: serverTimestamp(),
+        });
       })
       .catch((error: any) => {
         setIsSubmitting(false);

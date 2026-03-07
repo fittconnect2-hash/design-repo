@@ -42,7 +42,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, deleteDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -78,7 +78,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   const [isPublicConfirmOpen, setIsPublicConfirmOpen] = React.useState(false);
 
   const { toast } = useToast();
-  const auth = useAuth();
+  const { user } = useAuth();
   const firestore = useFirestore();
   
   const numSelected = React.useMemo(() => Object.values(rowSelection).filter(Boolean).length, [rowSelection]);
@@ -109,11 +109,24 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   };
 
   const handleDelete = async (design: Design & { id: string }) => {
-    if (auth.currentUser) {
+    if (user) {
       const designRef = doc(firestore, 'designs', design.id);
       
       deleteDoc(designRef)
-        .then(() => {
+        .then(async () => {
+          const auditLogRef = collection(firestore, 'auditLogs');
+          await addDoc(auditLogRef, {
+              userId: user.uid,
+              userDisplayName: user.displayName,
+              userEmail: user.email,
+              action: 'DELETE',
+              entityType: 'Design',
+              entityId: design.id,
+              entityName: design.name,
+              details: `User deleted design '${design.name}'`,
+              timestamp: serverTimestamp(),
+          });
+
           toast({
             title: 'Success',
             description: 'Design deleted successfully.',
@@ -136,7 +149,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   };
 
   const handleTogglePublicConfirm = async () => {
-    if (!designToTogglePublic || !auth.currentUser) return;
+    if (!designToTogglePublic || !user) return;
     
     const designRef = doc(firestore, 'designs', designToTogglePublic.id);
     const newPublicState = !designToTogglePublic.isPublic;
@@ -146,6 +159,20 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
 
     try {
       await setDoc(designRef, { isPublic: newPublicState, projectName }, { merge: true });
+
+      const auditLogRef = collection(firestore, 'auditLogs');
+      await addDoc(auditLogRef, {
+          userId: user.uid,
+          userDisplayName: user.displayName,
+          userEmail: user.email,
+          action: newPublicState ? 'SET_PUBLIC' : 'SET_PRIVATE',
+          entityType: 'Design',
+          entityId: designToTogglePublic.id,
+          entityName: designToTogglePublic.name,
+          details: `User set design '${designToTogglePublic.name}' to ${newPublicState ? 'Public' : 'Private'}`,
+          timestamp: serverTimestamp(),
+      });
+
       toast({
         title: 'Success',
         description: `Design has been made ${newPublicState ? 'public' : 'private'}.`,
@@ -168,7 +195,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   };
   
   const handleBulkUpdateConfirm = async () => {
-    if (!auth.currentUser || bulkAction === null) return;
+    if (!user || bulkAction === null) return;
 
     const isPublic = bulkAction === 'public';
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
@@ -184,7 +211,20 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
         const projectName = project?.name || designToUpdate.projectName || '';
 
         const designRef = doc(firestore, 'designs', id);
-        return setDoc(designRef, { isPublic, projectName }, { merge: true });
+        return setDoc(designRef, { isPublic, projectName }, { merge: true }).then(async () => {
+          const auditLogRef = collection(firestore, 'auditLogs');
+          await addDoc(auditLogRef, {
+              userId: user.uid,
+              userDisplayName: user.displayName,
+              userEmail: user.email,
+              action: isPublic ? 'SET_PUBLIC' : 'SET_PRIVATE',
+              entityType: 'Design',
+              entityId: id,
+              entityName: designToUpdate.name,
+              details: `User set design '${designToUpdate.name}' to ${isPublic ? 'Public' : 'Private'} via bulk action`,
+              timestamp: serverTimestamp(),
+          });
+        });
     });
 
     try {
