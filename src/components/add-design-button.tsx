@@ -14,7 +14,7 @@ import {
 import { DesignForm } from '@/components/design-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export function AddDesignButton() {
+export function AddDesignButton({ buttonText = 'Add Design' }: { buttonText?: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -27,7 +27,7 @@ export function AddDesignButton() {
     return (
       <Button>
         <PlusCircle className="mr-2 h-4 w-4" />
-        Add Design
+        {buttonText}
       </Button>
     );
   }
@@ -37,7 +37,7 @@ export function AddDesignButton() {
       <SheetTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Design
+          {buttonText}
         </Button>
       </SheetTrigger>
       <SheetContent className="p-0 sm:max-w-2xl">

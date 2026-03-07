@@ -50,7 +50,7 @@ export default function DesignsPage() {
           <h1 className="text-3xl font-headline font-bold tracking-tight">Design Repo</h1>
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
-        <AddDesignButton />
+        <AddDesignButton buttonText="Add Design" />
       </div>
 
       {hasDesigns ? (
@@ -64,7 +64,7 @@ export default function DesignsPage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
                 <p className="text-muted-foreground">Get started by adding your first design project.</p>
-                <AddDesignButton />
+                <AddDesignButton buttonText="Add Design" />
             </CardContent>
         </Card>
       )}

@@ -98,7 +98,7 @@ export default function ProjectsPage() {
             </Button>
            </div>
           {user && <ShareProjectsButton userId={user.uid} />}
-          <AddDesignButton />
+          <AddDesignButton buttonText="Add Project" />
         </div>
       </div>
 
@@ -131,11 +131,11 @@ export default function ProjectsPage() {
       ) : (
          <Card className="flex flex-col items-center justify-center py-20">
             <CardHeader>
-              <CardTitle className="text-2xl">No Designs Yet</CardTitle>
+              <CardTitle className="text-2xl">No Projects Yet</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-                <p className="text-muted-foreground">Get started by adding your first design project.</p>
-                <AddDesignButton />
+                <p className="text-muted-foreground">Get started by adding your first project.</p>
+                <AddDesignButton buttonText="Add Project" />
             </CardContent>
         </Card>
       )}
