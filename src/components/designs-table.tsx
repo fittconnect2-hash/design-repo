@@ -41,8 +41,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useCollection } from '@/firebase';
-import { doc, deleteDoc, collection, query, setDoc } from 'firebase/firestore';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -59,10 +59,11 @@ import { Checkbox } from './ui/checkbox';
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
+  projects?: (Project & { id: string })[];
   isPublic?: boolean;
 }
 
-export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
+export function DesignsTable({ designs, projects: projectsProp, isPublic = false }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
   const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
@@ -86,12 +87,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
     setRowSelection({});
   }, [designs]);
 
-  const projectsQuery = React.useMemo(() => {
-    if (isPublic || !auth.currentUser) return null;
-    return query(collection(firestore, 'users', auth.currentUser.uid, 'projects'));
-  }, [firestore, auth.currentUser, isPublic]);
-
-  const { data: projects } = useCollection<Project>(projectsQuery);
+  const projects = projectsProp;
 
   const projectMap = React.useMemo(() => {
     if (isPublic || !projects) return new Map();
