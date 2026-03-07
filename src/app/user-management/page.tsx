@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/definitions';
 import { UsersTable } from '@/components/users-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,24 +24,31 @@ export default function UserManagementPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const usersQuery = useMemo(() => {
+  const userProfileRef = useMemo(() => {
     if (!user) return null;
-    // This query will only work for users with an 'Admin' role as per security rules.
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  
+  const isAdmin = userProfile?.role === 'Admin';
+
+  const usersQuery = useMemo(() => {
+    // Only create the query if the user is an admin.
+    if (!user || !isAdmin) return null;
     const collRef = collection(firestore, 'users');
     return query(collRef, orderBy('createdAt', 'desc'));
-  }, [firestore, user]);
+  }, [firestore, user, isAdmin]);
 
   const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile & { id: string }>(usersQuery);
 
-  const isLoading = isUserLoading || (user && isLoadingUsers);
+  const isLoading = isUserLoading || isUserProfileLoading || (isAdmin && isLoadingUsers);
   
   if (isLoading) {
     return <UserManagementSkeleton />;
   }
   
-  const hasUsers = users && users.length > 0;
-  
-  if (error) {
+  if (error || !isAdmin) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -62,6 +69,8 @@ export default function UserManagementPage() {
       </div>
     );
   }
+
+  const hasUsers = users && users.length > 0;
 
   return (
     <div className="space-y-6">
