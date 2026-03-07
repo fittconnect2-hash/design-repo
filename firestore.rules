@@ -123,7 +123,7 @@ service cloud.firestore {
 
     match /tasks/{taskId} {
       // Admins can get any task. Staff Designers can only get a task if it's assigned to them.
-      allow get: if isAdmin() || (isSignedIn() && resource.data.assignedToId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && 'assignedToId' in resource.data && resource.data.assignedToId == request.auth.uid);
       
       // Any signed-in user can query the tasks collection. The `get` rule above ensures
       // that Staff Designers can only receive tasks assigned to them.
