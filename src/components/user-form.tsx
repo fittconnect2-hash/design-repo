@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '@/lib/definitions';
 import { Loader2 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -43,7 +43,7 @@ export function UserForm({ user: userToEdit, onSuccess, view = 'sheet' }: UserFo
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useUser();
   const router = useRouter();
   const isSheet = view === 'sheet';
 
