@@ -82,8 +82,10 @@ export function UsersTable({ users }: UsersTableProps) {
 
   React.useEffect(() => {
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
+      // Use a timeout to ensure this runs after Radix has finished its closing animations.
       setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
+        // Removing the property is a more robust way to reset the style than setting it to 'auto'.
+        document.body.style.removeProperty('pointer-events');
       }, 0);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
