@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { MoreHorizontal, Edit, Trash2, Send, Link as LinkIcon, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 import { format } from 'date-fns';
 
 import type { UserProfile } from '@/lib/definitions';
@@ -21,14 +22,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -43,15 +36,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { UserForm } from './user-form';
-import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 type ManagedUser = {
@@ -68,25 +52,15 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ users }: UsersTableProps) {
-  const [userToEdit, setUserToEdit] = React.useState<ManagedUser | null>(null);
   const [userToDelete, setUserToDelete] = React.useState<ManagedUser | null>(null);
   const [inviteToRevoke, setInviteToRevoke] = React.useState<ManagedUser | null>(null);
 
-  const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isRevokeModalOpen, setIsRevokeModalOpen] = React.useState(false);
 
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
   const firestore = useFirestore();
-
-  React.useEffect(() => {
-    if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
-    }
-  }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -137,7 +111,7 @@ export function UsersTable({ users }: UsersTableProps) {
                     title: 'Success',
                     description: `Invitation for ${inviteToRevoke.email} has been revoked.`,
                 });
-                handleRevokeModalOpenChange(false);
+                setIsRevokeModalOpen(false);
             })
             .catch(() => {
                  const permissionError = new FirestorePermissionError({
@@ -163,7 +137,7 @@ export function UsersTable({ users }: UsersTableProps) {
           title: 'Error',
           description: 'You cannot delete your own account from this panel.',
         });
-        handleDeleteModalOpenChange(false);
+        setIsDeleteModalOpen(false);
         return;
       }
       
@@ -188,7 +162,7 @@ export function UsersTable({ users }: UsersTableProps) {
             title: 'Success',
             description: `User profile for ${userToDelete.displayName} deleted. This does not remove their authentication record.`,
           });
-          handleDeleteModalOpenChange(false);
+          setIsDeleteModalOpen(false);
         })
         .catch(() => {
           const permissionError = new FirestorePermissionError({
@@ -204,44 +178,7 @@ export function UsersTable({ users }: UsersTableProps) {
         });
     }
   };
-
-  const handleOpenEditSheet = (user: ManagedUser) => {
-    setUserToEdit(user);
-    setIsEditSheetOpen(true);
-  };
   
-  const handleOpenDeleteModal = (user: ManagedUser) => {
-    setUserToDelete(user);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleOpenRevokeModal = (user: ManagedUser) => {
-    setInviteToRevoke(user);
-    setIsRevokeModalOpen(true);
-  };
-
-  const handleEditSheetOpenChange = (isOpen: boolean) => {
-    setIsEditSheetOpen(isOpen);
-    if (!isOpen) {
-      setUserToEdit(null);
-    }
-  };
-  
-  const handleDeleteModalOpenChange = (isOpen: boolean) => {
-    setIsDeleteModalOpen(isOpen);
-    if (!isOpen) {
-      setUserToDelete(null);
-    }
-  };
-  
-  const handleRevokeModalOpenChange = (isOpen: boolean) => {
-    setIsRevokeModalOpen(isOpen);
-    if (!isOpen) {
-      setInviteToRevoke(null);
-    }
-  };
-
-
   return (
     <>
       <div className="rounded-md border">
@@ -295,16 +232,18 @@ export function UsersTable({ users }: UsersTableProps) {
                       <DropdownMenuContent align="end">
                         {user.status === 'Active' ? (
                           <>
-                            <DropdownMenuItem
-                              onSelect={() => handleOpenEditSheet(user)}
-                              className="flex cursor-pointer items-center"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit User
+                            <DropdownMenuItem asChild className="flex cursor-pointer items-center">
+                              <Link href={`/user-management/${user.id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit User
+                              </Link>
                             </DropdownMenuItem>
                              <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onSelect={() => handleOpenDeleteModal(user)}
+                              onSelect={() => {
+                                setUserToDelete(user);
+                                setIsDeleteModalOpen(true);
+                              }}
                               className="cursor-pointer text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -322,7 +261,10 @@ export function UsersTable({ users }: UsersTableProps) {
                                 Copy Link
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => handleOpenRevokeModal(user)} className="cursor-pointer text-destructive focus:text-destructive">
+                            <DropdownMenuItem onSelect={() => {
+                                setInviteToRevoke(user);
+                                setIsRevokeModalOpen(true);
+                            }} className="cursor-pointer text-destructive focus:text-destructive">
                                 <AlertTriangle className="mr-2 h-4 w-4" />
                                 Revoke Invite
                             </DropdownMenuItem>
@@ -343,46 +285,25 @@ export function UsersTable({ users }: UsersTableProps) {
           </TableBody>
         </Table>
       </div>
-      
-      <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
-        <SheetContent className="p-0 sm:max-w-md">
-          <SheetHeader className="p-6 pb-4">
-            <SheetTitle>Edit User</SheetTitle>
-            <SheetDescription>
-              Modify the user's details and role. Click save when you're done.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-6.5rem)]">
-            <div className="px-6 pb-6">
-              {userToEdit && (
-                <UserForm
-                  user={userToEdit as UserProfile & { id: string }}
-                  onSuccess={() => handleEditSheetOpenChange(false)}
-                />
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
 
-      <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you absolutely sure?</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
               This will permanently delete the user profile for &quot;{userToDelete?.displayName}&quot; from Firestore. This action does not delete the user's authentication account and cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDeleteModalOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleDeleteConfirm} variant="destructive">
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} variant="destructive">
               Delete Profile
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <AlertDialog open={isRevokeModalOpen} onOpenChange={handleRevokeModalOpenChange}>
+      <AlertDialog open={isRevokeModalOpen} onOpenChange={setIsRevokeModalOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -392,7 +313,7 @@ export function UsersTable({ users }: UsersTableProps) {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleRevokeConfirm} className="bg-destructive hover:bg-destructive/90">
+                <AlertDialogAction onClick={handleRevokeConfirm} variant="destructive">
                     Revoke
                 </AlertDialogAction>
             </AlertDialogFooter>

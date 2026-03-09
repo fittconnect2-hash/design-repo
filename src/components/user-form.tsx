@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,7 @@ import { SheetClose } from '@/components/ui/sheet';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const formSchema = z.object({
   displayName: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -34,13 +36,16 @@ type UserFormValues = z.infer<typeof formSchema>;
 interface UserFormProps {
   user: UserProfile & { id: string };
   onSuccess?: () => void;
+  view?: 'page' | 'sheet';
 }
 
-export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
+export function UserForm({ user: userToEdit, onSuccess, view = 'sheet' }: UserFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
   const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const isSheet = view === 'sheet';
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
@@ -58,7 +63,7 @@ export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
       return;
     }
     
-    if (userToEdit.id === currentUser.uid && values.role !== 'Admin') {
+    if (userToEdit.id === currentUser.uid && values.role !== 'Admin' && userToEdit.role === 'Admin') {
       toast({
         variant: 'destructive',
         title: 'Invalid Action',
@@ -99,6 +104,8 @@ export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
       
       if (onSuccess) {
         onSuccess();
+      } else {
+        router.push('/user-management');
       }
     } catch (error: unknown) {
       const permissionError = new FirestorePermissionError({
@@ -115,7 +122,7 @@ export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
     }
   };
   
-  return (
+  const formContent = (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
@@ -167,9 +174,15 @@ export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
         />
         
         <div className="flex justify-end gap-4 pt-4">
-          <SheetClose asChild>
-            <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
-          </SheetClose>
+          {isSheet ? (
+             <SheetClose asChild>
+              <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
+            </SheetClose>
+          ) : (
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => router.back()}>
+                Cancel
+            </Button>
+          )}
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
@@ -178,4 +191,19 @@ export function UserForm({ user: userToEdit, onSuccess }: UserFormProps) {
       </form>
     </Form>
   );
+
+  if (isSheet) {
+    return formContent;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Edit User</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {formContent}
+      </CardContent>
+    </Card>
+  )
 }
