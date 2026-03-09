@@ -86,7 +86,7 @@ export function UsersTable({ users }: UsersTableProps) {
     // the UI from becoming unclickable due to race conditions with modal animations.
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
       const timer = setTimeout(() => {
-        document.body.style.removeProperty('pointer-events');
+        document.body.style.pointerEvents = 'auto';
       }, 100); // A small delay ensures this runs after Radix's own cleanup.
 
       return () => clearTimeout(timer);
