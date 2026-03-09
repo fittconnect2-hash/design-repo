@@ -80,15 +80,6 @@ export function UsersTable({ users }: UsersTableProps) {
   const { user: currentUser } = useAuth();
   const firestore = useFirestore();
 
-  React.useEffect(() => {
-    if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
-    }
-  }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
-
-
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -223,17 +214,26 @@ export function UsersTable({ users }: UsersTableProps) {
 
   const handleEditSheetOpenChange = (isOpen: boolean) => {
     setIsEditSheetOpen(isOpen);
-    if (!isOpen) setUserToEdit(null);
+    if (!isOpen) {
+      setUserToEdit(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
   
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
-    if (!isOpen) setUserToDelete(null);
+    if (!isOpen) {
+      setUserToDelete(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
   
   const handleRevokeModalOpenChange = (isOpen: boolean) => {
     setIsRevokeModalOpen(isOpen);
-    if (!isOpen) setInviteToRevoke(null);
+    if (!isOpen) {
+      setInviteToRevoke(null);
+      document.body.style.pointerEvents = 'auto';
+    }
   };
 
 
