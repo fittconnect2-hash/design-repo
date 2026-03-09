@@ -81,10 +81,15 @@ export function UsersTable({ users }: UsersTableProps) {
   const firestore = useFirestore();
 
   React.useEffect(() => {
+    // This effect ensures that when all modals controlled by this table are closed,
+    // the body's pointer-events are restored. This is a robust way to prevent
+    // the UI from becoming unclickable due to race conditions with modal animations.
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
+      const timer = setTimeout(() => {
+        document.body.style.removeProperty('pointer-events');
+      }, 100); // A small delay ensures this runs after Radix's own cleanup.
+
+      return () => clearTimeout(timer);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
 
@@ -111,7 +116,7 @@ export function UsersTable({ users }: UsersTableProps) {
     const link = `${origin}/signup?invite=${inviteId}`;
     const subject = encodeURIComponent("Reminder: You're invited to join DesignDock");
     const body = encodeURIComponent(
-      `Hello,\n\nThis is a reminder about your invitation to join our team on DesignDock.\n\nPlease use the following link to sign up:\n${link}\n\nWe're looking forward to collaborating with you!\n\nBest,\nThe DesignDock Team`
+      `Hello,\n\nYou have been invited to join our team on DesignDock.\n\nPlease use the following link to sign up:\n${link}\n\nWe're looking forward to collaborating with you!\n\nBest,\nThe DesignDock Team`
     );
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
   };
