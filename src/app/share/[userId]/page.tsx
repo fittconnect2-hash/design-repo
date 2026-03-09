@@ -15,7 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 function SharePageSkeleton() {
   return (
@@ -28,8 +30,10 @@ function SharePageSkeleton() {
 
 export default function SharePage() {
   const firestore = useFirestore();
+  const params = useParams<{ userId: string }>();
   const searchParams = useSearchParams();
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const projectIds = useMemo(() => {
     const projectsParam = searchParams.get('projects');
@@ -67,11 +71,23 @@ export default function SharePage() {
 
   const filteredDesigns = useMemo(() => {
     if (!designs) return [];
-    if (selectedProjectId === 'all') {
-      return designs;
+    let tempDesigns = designs;
+
+    if (selectedProjectId !== 'all') {
+        tempDesigns = tempDesigns.filter(design => design.projectId === selectedProjectId);
     }
-    return designs.filter(design => design.projectId === selectedProjectId);
-  }, [designs, selectedProjectId]);
+    
+    if (searchTerm) {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        tempDesigns = tempDesigns.filter(design => 
+            design.name.toLowerCase().includes(lowercasedTerm) ||
+            (design.projectName && design.projectName.toLowerCase().includes(lowercasedTerm)) ||
+            (design.tags && design.tags.some(tag => tag.toLowerCase().includes(lowercasedTerm)))
+        );
+    }
+
+    return tempDesigns;
+  }, [designs, selectedProjectId, searchTerm]);
 
   const pageTitle = projectIds.length > 0 ? "Shared Project Designs" : "Shared Designs";
   const pageDescription = projectIds.length > 0 
@@ -80,7 +96,7 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-muted/40 p-4 sm:p-6 md:p-10 w-full animate-in fade-in-0 duration-500">
-      <div className="mx-auto w-full">
+      <div className="mx-auto w-full max-w-7xl">
         <header className="mb-8">
             <h1 className="text-4xl font-headline font-bold tracking-tight">{pageTitle}</h1>
             <p className="text-muted-foreground mt-1">{pageDescription}</p>
@@ -90,9 +106,9 @@ export default function SharePage() {
             <SharePageSkeleton />
           ) : designs && designs.length > 0 ? (
             <>
-              {projects && projects.length > 1 && (
-                <div className="flex items-center gap-4">
-                  <div className="w-full max-w-xs space-y-2">
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                {projects && projects.length > 1 && (
+                  <div className="w-full md:w-auto md:max-w-xs space-y-2">
                     <Label htmlFor="project-filter">Filter by Project</Label>
                     <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                       <SelectTrigger id="project-filter">
@@ -108,10 +124,24 @@ export default function SharePage() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+                 <div className="w-full md:w-auto md:max-w-xs space-y-2 flex-grow">
+                    <Label htmlFor="search-filter">Search Designs</Label>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="search-filter"
+                            type="search"
+                            placeholder="Search by name, project, or tag..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
-              )}
+              </div>
               <Card>
-                <DesignsTable designs={filteredDesigns} isPublic={true} />
+                <DesignsTable designs={filteredDesigns} isPublic={true} userId={params.userId} />
               </Card>
             </>
           ) : (

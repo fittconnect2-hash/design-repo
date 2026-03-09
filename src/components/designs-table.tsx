@@ -37,14 +37,16 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Checkbox } from './ui/checkbox';
+import { useSearchParams } from 'next/navigation';
 
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
   isPublic?: boolean;
+  userId?: string;
 }
 
-export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
+export function DesignsTable({ designs, isPublic = false, userId }: DesignsTableProps) {
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [designToTogglePublic, setDesignToTogglePublic] = React.useState<(Design & { id: string }) | null>(null);
   
@@ -57,12 +59,22 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
   
   const numSelected = React.useMemo(() => Object.values(rowSelection).filter(Boolean).length, [rowSelection]);
   
   React.useEffect(() => {
     setRowSelection({});
   }, [designs]);
+
+  const publicLink = React.useCallback((designId: string) => {
+    const projectIds = searchParams.get('projects');
+    let link = `/share/designs/${designId}?from=${userId}`;
+    if (projectIds) {
+        link += `&projects=${projectIds}`;
+    }
+    return link;
+  }, [searchParams, userId]);
 
   React.useEffect(() => {
     if (!isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
@@ -326,7 +338,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                     />
                   </TableCell>
                   <TableCell className="font-medium">
-                     <Link href={`/designs/${design.id}`} className="hover:underline">
+                     <Link href={isPublic ? publicLink(design.id) : `/designs/${design.id}`} className="hover:underline">
                         {design.name || 'Untitled Design'}
                      </Link>
                   </TableCell>
@@ -352,7 +364,7 @@ export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
                       </TableCell>
                       <TableCell className="text-right">
                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/designs/${design.id}`}>View Details</Link>
+                            <Link href={publicLink(design.id)}>View Details</Link>
                         </Button>
                       </TableCell>
                     </>
