@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -55,6 +55,14 @@ export function AddUserSheet({ open, onOpenChange }: AddUserSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteDetails, setInviteDetails] = useState<{ link: string; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [open]);
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(formSchema),
