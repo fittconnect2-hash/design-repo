@@ -8,10 +8,18 @@ import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { ArrowLeft, User, Folder, Calendar, Edit } from 'lucide-react';
+import { User, Folder, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 function TaskPageSkeleton() {
   return (
@@ -57,12 +65,19 @@ export default function TaskPage() {
   return (
     <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
-        <Button asChild variant="ghost" className="pl-0">
-          <Link href="/tasks" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Task Board
-          </Link>
-        </Button>
+         <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/tasks">Tasks</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{task.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <Button asChild>
           <Link href={`/tasks/${task.id}/edit`}>
             <Edit className="mr-2 h-4 w-4" />

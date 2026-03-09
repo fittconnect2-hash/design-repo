@@ -65,8 +65,14 @@ export default function EditTaskPage() {
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
+           <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href={`/tasks/${params.id}`}>{task.title}</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Edit Task</BreadcrumbPage>
+            <BreadcrumbPage>Edit</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

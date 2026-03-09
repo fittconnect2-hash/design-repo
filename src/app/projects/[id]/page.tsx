@@ -5,7 +5,7 @@ import { notFound, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit, Calendar, FileText, PlusCircle } from 'lucide-react';
+import { Edit, Calendar, FileText } from 'lucide-react';
 
 import { useDoc, useCollection, useFirestore } from '@/firebase';
 import type { Design, Project } from '@/lib/definitions';
@@ -14,6 +14,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { DesignsTable } from '@/components/designs-table';
 import { AddDesignButton } from '@/components/add-design-button';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 function ProjectDetailsSkeleton() {
   return (
@@ -70,12 +78,19 @@ export default function ProjectDetailsPage() {
   return (
     <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
-        <Button asChild variant="ghost" className="pl-0">
-          <Link href="/projects" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            All Projects
-          </Link>
-        </Button>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/projects">Projects</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{project.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <Button asChild>
           <Link href={`/projects/${project.id}/edit`}>
             <Edit className="mr-2 h-4 w-4" />

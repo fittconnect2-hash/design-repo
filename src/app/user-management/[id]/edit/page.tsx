@@ -64,7 +64,11 @@ export default function EditUserPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Edit User</BreadcrumbPage>
+            <BreadcrumbPage>{user.displayName}</BreadcrumbPage>
+          </BreadcrumbItem>
+           <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Edit</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
