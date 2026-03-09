@@ -97,7 +97,7 @@ export function DesignCard({ design }: DesignCardProps) {
 
   return (
     <>
-      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
         <Link href={`/designs/${design.id}`} className="block">
           <CardHeader className="p-0">
             <div className="relative aspect-video w-full overflow-hidden">

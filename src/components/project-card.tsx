@@ -91,7 +91,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <>
-      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+      <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
         <CardHeader className="flex flex-row items-start justify-between">
            <CardTitle className="text-xl">
              <Link href={`/projects/${project.id}`} className="hover:underline">

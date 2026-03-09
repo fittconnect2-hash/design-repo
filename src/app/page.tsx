@@ -116,28 +116,34 @@ export default function OverviewPage() {
               <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                       <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-                      <Folder className="h-4 w-4 text-muted-foreground" />
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        <Folder className="h-5 w-5 text-primary" />
+                      </div>
                   </CardHeader>
                   <CardContent>
-                      <div className="text-2xl font-bold">{allProjects?.length ?? 0}</div>
+                      <div className="text-3xl font-bold">{allProjects?.length ?? 0}</div>
                   </CardContent>
               </Card>
               <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                       <CardTitle className="text-sm font-medium">Total Designs</CardTitle>
-                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
                   </CardHeader>
                   <CardContent>
-                      <div className="text-2xl font-bold">{allDesigns?.length ?? 0}</div>
+                      <div className="text-3xl font-bold">{allDesigns?.length ?? 0}</div>
                   </CardContent>
               </Card>
               <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                       <CardTitle className="text-sm font-medium">Public Designs</CardTitle>
-                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      </div>
                   </CardHeader>
                   <CardContent>
-                      <div className="text-2xl font-bold">{publicDesignsCount}</div>
+                      <div className="text-3xl font-bold">{publicDesignsCount}</div>
                   </CardContent>
               </Card>
           </div>
