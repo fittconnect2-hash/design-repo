@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { MoreHorizontal, Edit, Trash2, Send, Copy, Link as LinkIcon, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Send, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
 import type { UserProfile } from '@/lib/definitions';
@@ -81,15 +81,10 @@ export function UsersTable({ users }: UsersTableProps) {
   const firestore = useFirestore();
 
   React.useEffect(() => {
-    // This effect ensures that when all modals controlled by this table are closed,
-    // the body's pointer-events are restored. This is a robust way to prevent
-    // the UI from becoming unclickable due to race conditions with modal animations.
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
-      }, 100); // A small delay ensures this runs after Radix's own cleanup.
-
-      return () => clearTimeout(timer);
+      }, 0);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
 
