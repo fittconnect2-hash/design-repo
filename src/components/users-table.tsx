@@ -82,11 +82,8 @@ export function UsersTable({ users }: UsersTableProps) {
 
   React.useEffect(() => {
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
-      // Use a timeout to ensure this runs after Radix has finished its closing animations.
       setTimeout(() => {
-        // This is the most forceful way to ensure the UI becomes clickable again.
-        // It removes the entire `style` attribute from the body.
-        document.body.removeAttribute('style');
+        document.body.style.pointerEvents = 'auto';
       }, 0);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
