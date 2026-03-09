@@ -84,8 +84,9 @@ export function UsersTable({ users }: UsersTableProps) {
     if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
       // Use a timeout to ensure this runs after Radix has finished its closing animations.
       setTimeout(() => {
-        // Removing the property is a more robust way to reset the style than setting it to 'auto'.
-        document.body.style.removeProperty('pointer-events');
+        // This is the most forceful way to ensure the UI becomes clickable again.
+        // It removes the entire `style` attribute from the body.
+        document.body.removeAttribute('style');
       }, 0);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
