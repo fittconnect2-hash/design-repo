@@ -3,10 +3,10 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma } from 'lucide-react';
 import { format } from 'date-fns';
 
-import type { Design, Project } from '@/lib/definitions';
+import type { Design } from '@/lib/definitions';
 import {
   Table,
   TableBody,
@@ -31,40 +31,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 
 
 interface DesignsTableProps {
   designs: (Design & { id: string })[];
-  projects?: (Project & { id: string })[];
   isPublic?: boolean;
 }
 
-export function DesignsTable({ designs, projects: projectsProp, isPublic = false }: DesignsTableProps) {
-  const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
+export function DesignsTable({ designs, isPublic = false }: DesignsTableProps) {
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [designToTogglePublic, setDesignToTogglePublic] = React.useState<(Design & { id: string }) | null>(null);
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [bulkAction, setBulkAction] = React.useState<'public' | 'private' | null>(null);
 
-  const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isPublicConfirmOpen, setIsPublicConfirmOpen] = React.useState(false);
 
@@ -79,19 +65,12 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   }, [designs]);
 
   React.useEffect(() => {
-    if (!isViewModalOpen && !isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
+    if (!isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
     }
-  }, [isViewModalOpen, isDeleteModalOpen, isPublicConfirmOpen, bulkAction]);
-
-  const projects = projectsProp;
-
-  const projectMap = React.useMemo(() => {
-    if (isPublic || !projects) return new Map();
-    return new Map(projects.map(p => [p.id, p.name]));
-  }, [projects, isPublic]);
+  }, [isDeleteModalOpen, isPublicConfirmOpen, bulkAction]);
 
   const handleDeleteConfirm = () => {
     if (designToDelete) {
@@ -145,11 +124,8 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     const designRef = doc(firestore, 'designs', designToTogglePublic.id);
     const newPublicState = !designToTogglePublic.isPublic;
     
-    const project = projectsProp?.find(p => p.id === designToTogglePublic.projectId);
-    const projectName = project?.name || designToTogglePublic.projectName || '';
-
     try {
-      await setDoc(designRef, { isPublic: newPublicState, projectName }, { merge: true });
+      await setDoc(designRef, { isPublic: newPublicState }, { merge: true });
 
       const auditLogRef = collection(firestore, 'auditLogs');
       await addDoc(auditLogRef, {
@@ -172,7 +148,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
        const permissionError = new FirestorePermissionError({
           path: designRef.path,
           operation: 'update',
-          requestResourceData: { isPublic: newPublicState, projectName },
+          requestResourceData: { isPublic: newPublicState },
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
@@ -197,12 +173,9 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
             console.warn(`Could not find design with id ${id} for bulk update.`);
             return Promise.resolve();
         }
-        
-        const project = projectsProp?.find(p => p.id === designToUpdate.projectId);
-        const projectName = project?.name || designToUpdate.projectName || '';
 
         const designRef = doc(firestore, 'designs', id);
-        return setDoc(designRef, { isPublic, projectName }, { merge: true }).then(async () => {
+        return setDoc(designRef, { isPublic }, { merge: true }).then(async () => {
           const auditLogRef = collection(firestore, 'auditLogs');
           await addDoc(auditLogRef, {
               userId: user.uid,
@@ -255,11 +228,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
       [designId]: checked,
     }));
   };
-
-  const handleOpenViewModal = (design: Design & { id: string }) => {
-    setDesignToView(design);
-    setIsViewModalOpen(true);
-  };
   
   const handleOpenDeleteModal = (design: Design & { id: string }) => {
     setDesignToDelete(design);
@@ -271,14 +239,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     setIsPublicConfirmOpen(true);
   };
 
-  const handleViewModalOpenChange = (isOpen: boolean) => {
-    setIsViewModalOpen(isOpen);
-    if (!isOpen) {
-      setDesignToView(null);
-      document.body.style.pointerEvents = 'auto';
-    }
-  };
-  
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
@@ -308,7 +268,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
           </Button>
         </div>
       )}
-      <div className="rounded-md border">
+      <div className="rounded-md border-t">
         <Table>
           <TableHeader>
             <TableRow>
@@ -365,7 +325,11 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                       data-ai-hint="design thumbnail"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{design.name || 'Untitled Design'}</TableCell>
+                  <TableCell className="font-medium">
+                     <Link href={`/designs/${design.id}`} className="hover:underline">
+                        {design.name || 'Untitled Design'}
+                     </Link>
+                  </TableCell>
                    <TableCell className="hidden md:table-cell text-muted-foreground">{design.projectName || 'N/A'}</TableCell>
                   
                   {isPublic ? (
@@ -387,8 +351,8 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                         ) : <span className="text-muted-foreground">N/A</span>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => handleOpenViewModal(design)}>
-                          View Details
+                         <Button asChild variant="outline" size="sm">
+                            <Link href={`/designs/${design.id}`}>View Details</Link>
                         </Button>
                       </TableCell>
                     </>
@@ -423,17 +387,14 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => handleOpenViewModal(design)}
-                              className="flex cursor-pointer items-center"
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
+                            <DropdownMenuItem asChild>
+                                <Link href={`/designs/${design.id}`} className="flex w-full items-center cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                                </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild
-                              className="flex cursor-pointer items-center"
-                            >
-                               <Link href={`/designs/${design.id}/edit`} className="flex w-full items-center">
+                            <DropdownMenuItem asChild>
+                               <Link href={`/designs/${design.id}/edit`} className="flex w-full items-center cursor-pointer">
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </Link>
@@ -464,7 +425,7 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isPublic ? 6 : 9} className="h-24 text-center">
+                <TableCell colSpan={isPublic ? 5 : 8} className="h-24 text-center">
                   No designs to display.
                 </TableCell>
               </TableRow>
@@ -473,112 +434,24 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
         </Table>
       </div>
       
-      <Dialog open={isViewModalOpen} onOpenChange={handleViewModalOpenChange}>
-        <DialogContent className="sm:max-w-3xl p-0">
-          {designToView ? (
-            <>
-              <DialogHeader className="p-6 pb-4">
-                <DialogTitle className="text-2xl font-headline font-bold">{designToView.name}</DialogTitle>
-                <DialogDescription className="text-base text-foreground/80 pt-2">{designToView.description}</DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                <div className="px-6 pb-6 space-y-6">
-                  <div className="relative aspect-video w-full">
-                    <Image
-                      src={designToView.imageUrl}
-                      alt={designToView.name}
-                      fill
-                      className="object-cover rounded-md border"
-                      data-ai-hint="project hero"
-                      priority
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {designToView.tags?.map((tag, index) => (
-                      <Badge key={`${tag}-${index}`} variant="secondary">{tag}</Badge>
-                    ))}
-                  </div>
-                  
-                  <Separator />
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                      <div>
-                          <div className="font-semibold text-foreground">Project</div>
-                          <div className="text-muted-foreground">{designToView.projectName || 'N/A'}</div>
-                      </div>
-                      <div>
-                          <div className="font-semibold text-foreground">Version</div>
-                          <div className="text-muted-foreground">v{designToView.version}</div>
-                      </div>
-                      <div>
-                          <div className="font-semibold text-foreground">Created</div>
-                          <div className="text-muted-foreground">{designToView.createdAt ? format(designToView.createdAt.toDate(), 'PP') : 'N/A'}</div>
-                      </div>
-                      <div>
-                          <div className="font-semibold text-foreground">Last Updated</div>
-                          <div className="text-muted-foreground">{designToView.updatedAt ? format(designToView.updatedAt.toDate(), 'PP') : 'N/A'}</div>
-                      </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <a href={designToView.figmaLink} target="_blank" rel="noopener noreferrer" className="group">
-                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <UiCardTitle className="text-sm font-medium">Figma Link</UiCardTitle>
-                          <Figma className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.figmaLink}</div>
-                        </CardContent>
-                      </Card>
-                    </a>
-                    <a href={designToView.prototypeUrl} target="_blank" rel="noopener noreferrer" className="group">
-                      <Card className="h-full transition-all hover:border-primary hover:shadow-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <UiCardTitle className="text-sm font-medium">Prototype Link</UiCardTitle>
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-lg font-bold text-primary group-hover:underline truncate">{designToView.prototypeUrl}</div>
-                        </CardContent>
-                      </Card>
-                    </a>
-                  </div>
-                </div>
-              </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t">
-                  {!isPublic && 
-                    <Button type="button" variant="secondary" onClick={() => window.location.assign(`/designs/${designToView.id}`)}>
-                      View Full Page
-                    </Button>
-                  }
-                  <Button type="button" onClick={() => handleViewModalOpenChange(false)}>Close</Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
       {!isPublic && (
         <>
-          <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Are you absolutely sure?</DialogTitle>
-                <DialogDescription>
+          <AlertDialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete the design &quot;{designToDelete?.name}&quot;.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
                 <Button variant="outline" onClick={() => handleDeleteModalOpenChange(false)}>Cancel</Button>
                 <Button onClick={handleDeleteConfirm} variant="destructive">
                   Delete
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
            <AlertDialog open={isPublicConfirmOpen} onOpenChange={handlePublicConfirmOpenChange}>
             <AlertDialogContent>
               <AlertDialogHeader>

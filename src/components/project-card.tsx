@@ -93,10 +93,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
     <>
       <Card className="group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <CardHeader className="flex flex-row items-start justify-between">
-          <CardTitle className="text-xl">{project.name}</CardTitle>
+           <CardTitle className="text-xl">
+             <Link href={`/projects/${project.id}`} className="hover:underline">
+                {project.name}
+             </Link>
+           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

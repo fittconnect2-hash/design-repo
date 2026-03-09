@@ -132,7 +132,7 @@ export default function DesignsPage() {
 
       {hasDesigns ? (
         <Card>
-          <DesignsTable designs={filteredDesigns || []} projects={projects || []} />
+          <DesignsTable designs={filteredDesigns || []} />
         </Card>
       ) : (
          <Card className="flex flex-col items-center justify-center py-20">

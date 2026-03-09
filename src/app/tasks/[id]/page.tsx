@@ -6,11 +6,12 @@ import { doc } from 'firebase/firestore';
 import type { Task } from '@/lib/definitions';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { ArrowLeft, User, Folder, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Folder, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 function TaskPageSkeleton() {
   return (
@@ -55,16 +56,28 @@ export default function TaskPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
-      <Button asChild variant="ghost" className="pl-0">
-        <Link href="/tasks" className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Task Board
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button asChild variant="ghost" className="pl-0">
+          <Link href="/tasks" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Task Board
+          </Link>
+        </Button>
+        <Button asChild>
+          <Link href={`/tasks/${task.id}/edit`}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Task
+          </Link>
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-headline font-bold">{task.title}</CardTitle>
-          <p className="text-muted-foreground">in project: {task.projectName}</p>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-3xl font-headline font-bold">{task.title}</CardTitle>
+            <Badge>{task.status}</Badge>
+          </div>
+          <CardDescription>in project: {task.projectName}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
@@ -78,8 +91,8 @@ export default function TaskPage() {
                 <div className="text-muted-foreground ml-6">{task.assignedToName || 'Unassigned'}</div>
             </div>
             <div>
-                <div className="font-semibold text-foreground flex items-center gap-2"><Folder className="h-4 w-4" /> Status</div>
-                <div className="text-muted-foreground ml-6">{task.status}</div>
+                <div className="font-semibold text-foreground flex items-center gap-2"><Folder className="h-4 w-4" /> Project</div>
+                <div className="text-muted-foreground ml-6">{task.projectName}</div>
             </div>
             <div>
                 <div className="font-semibold text-foreground flex items-center gap-2"><Calendar className="h-4 w-4" /> Last Updated</div>
