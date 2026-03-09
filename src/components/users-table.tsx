@@ -81,12 +81,35 @@ export function UsersTable({ users }: UsersTableProps) {
   const firestore = useFirestore();
 
   React.useEffect(() => {
-    if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
+    if (!isEditSheetOpen) {
       setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
+        if (!isDeleteModalOpen && !isRevokeModalOpen) {
+          document.body.style.pointerEvents = 'auto';
+        }
       }, 0);
     }
   }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
+
+  React.useEffect(() => {
+    if (!isDeleteModalOpen) {
+      setTimeout(() => {
+        if (!isEditSheetOpen && !isRevokeModalOpen) {
+          document.body.style.pointerEvents = 'auto';
+        }
+      }, 0);
+    }
+  }, [isDeleteModalOpen, isEditSheetOpen, isRevokeModalOpen]);
+  
+  React.useEffect(() => {
+    if (!isRevokeModalOpen) {
+      setTimeout(() => {
+        if (!isEditSheetOpen && !isDeleteModalOpen) {
+          document.body.style.pointerEvents = 'auto';
+        }
+      }, 0);
+    }
+  }, [isRevokeModalOpen, isEditSheetOpen, isDeleteModalOpen]);
+
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
