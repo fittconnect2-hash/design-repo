@@ -125,6 +125,8 @@ export function TaskForm({ task, view = 'page', onSuccess }: TaskFormProps) {
 
       if (onSuccess) {
         onSuccess();
+      } else {
+        router.push('/tasks');
       }
 
     } catch (error: unknown) {

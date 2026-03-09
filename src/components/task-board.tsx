@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { PlusCircle, Loader2, User, Share2 } from 'lucide-react';
 
@@ -30,7 +31,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { DesignForm } from './design-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TaskForm } from './task-form';
 import {
   Form,
   FormControl,
@@ -138,13 +138,12 @@ interface TaskBoardProps {
 
 export function TaskBoard({ filter, userId }: TaskBoardProps) {
   const firestore = useFirestore();
+  const router = useRouter();
   const { user } = useUser();
   const [tasks, setTasks] = useState<(Task & { id: string })[]>([]);
   const [selectedTask, setSelectedTask] = useState<(Task & { id: string }) | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isAddDesignSheetOpen, setIsAddDesignSheetOpen] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState<(Task & { id: string }) | null>(null);
-  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const { toast } = useToast();
 
@@ -266,8 +265,7 @@ export function TaskBoard({ filter, userId }: TaskBoardProps) {
   };
   
   const handleTaskDoubleClick = (task: Task & { id: string }) => {
-    setTaskToEdit(task);
-    setIsEditSheetOpen(true);
+    router.push(`/tasks/${task.id}/edit`);
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>, status: TaskStatus) => {
@@ -525,28 +523,6 @@ export function TaskBoard({ filter, userId }: TaskBoardProps) {
               </div>
             </ScrollArea>
           </SheetContent>
-      </Sheet>
-
-      <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
-        <SheetContent className="p-0 sm:max-w-md data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right">
-          <SheetHeader className="p-6 pb-4">
-            <SheetTitle>Edit Task</SheetTitle>
-            <SheetDescription>
-              Make changes to your task here. Click save when you're done.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-6.5rem)]">
-            <div className="px-6 pb-6">
-              {taskToEdit && (
-                <TaskForm
-                  task={taskToEdit}
-                  view="sheet"
-                  onSuccess={() => setIsEditSheetOpen(false)}
-                />
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
       </Sheet>
     </>
   );

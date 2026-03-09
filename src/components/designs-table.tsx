@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { MoreHorizontal, Edit, Trash2, Eye, Globe, Lock, ExternalLink, Figma, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -46,14 +47,6 @@ import { doc, deleteDoc, setDoc, collection, addDoc, serverTimestamp } from 'fir
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle as UiCardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { DesignForm } from './design-form';
 import { Checkbox } from './ui/checkbox';
 
 
@@ -65,7 +58,6 @@ interface DesignsTableProps {
 
 export function DesignsTable({ designs, projects: projectsProp, isPublic = false }: DesignsTableProps) {
   const [designToView, setDesignToView] = React.useState<(Design & { id: string }) | null>(null);
-  const [designToEdit, setDesignToEdit] = React.useState<(Design & { id: string }) | null>(null);
   const [designToDelete, setDesignToDelete] = React.useState<(Design & { id: string }) | null>(null);
   const [designToTogglePublic, setDesignToTogglePublic] = React.useState<(Design & { id: string }) | null>(null);
   
@@ -73,7 +65,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   const [bulkAction, setBulkAction] = React.useState<'public' | 'private' | null>(null);
 
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
-  const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isPublicConfirmOpen, setIsPublicConfirmOpen] = React.useState(false);
 
@@ -88,12 +79,12 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
   }, [designs]);
 
   React.useEffect(() => {
-    if (!isViewModalOpen && !isEditSheetOpen && !isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
+    if (!isViewModalOpen && !isDeleteModalOpen && !isPublicConfirmOpen && !bulkAction) {
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
     }
-  }, [isViewModalOpen, isEditSheetOpen, isDeleteModalOpen, isPublicConfirmOpen, bulkAction]);
+  }, [isViewModalOpen, isDeleteModalOpen, isPublicConfirmOpen, bulkAction]);
 
   const projects = projectsProp;
 
@@ -269,11 +260,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     setDesignToView(design);
     setIsViewModalOpen(true);
   };
-
-  const handleOpenEditSheet = (design: Design & { id: string }) => {
-    setDesignToEdit(design);
-    setIsEditSheetOpen(true);
-  };
   
   const handleOpenDeleteModal = (design: Design & { id: string }) => {
     setDesignToDelete(design);
@@ -289,14 +275,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
     setIsViewModalOpen(isOpen);
     if (!isOpen) {
       setDesignToView(null);
-      document.body.style.pointerEvents = 'auto';
-    }
-  };
-
-  const handleEditSheetOpenChange = (isOpen: boolean) => {
-    setIsEditSheetOpen(isOpen);
-    if (!isOpen) {
-      setDesignToEdit(null);
       document.body.style.pointerEvents = 'auto';
     }
   };
@@ -452,12 +430,13 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => handleOpenEditSheet(design)}
+                            <DropdownMenuItem asChild
                               className="flex cursor-pointer items-center"
                             >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
+                               <Link href={`/designs/${design.id}/edit`} className="flex w-full items-center">
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => handleOpenPublicConfirmModal(design)}
@@ -584,28 +563,6 @@ export function DesignsTable({ designs, projects: projectsProp, isPublic = false
 
       {!isPublic && (
         <>
-          <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
-            <SheetContent className="p-0 sm:max-w-2xl">
-              <SheetHeader className="p-6 pb-4">
-                <SheetTitle>Edit Design</SheetTitle>
-                <SheetDescription>
-                  Make changes to your design here. Click save when you're done.
-                </SheetDescription>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-6.5rem)]">
-                <div className="px-6 pb-6">
-                  {designToEdit && (
-                    <DesignForm
-                      design={designToEdit}
-                      view="sheet"
-                      onSuccess={() => handleEditSheetOpenChange(false)}
-                    />
-                  )}
-                </div>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-
           <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
             <DialogContent>
               <DialogHeader>

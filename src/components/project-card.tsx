@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { MoreHorizontal, Edit, Trash2, Calendar } from 'lucide-react';
+import Link from 'next/link';
 import { format } from 'date-fns';
 
 import type { Project } from '@/lib/definitions';
@@ -22,25 +23,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { ProjectForm } from './project-form';
-import { ScrollArea } from './ui/scroll-area';
 
 interface ProjectCardProps {
   project: Project & { id: string };
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
-  const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
 
   const { toast } = useToast();
@@ -48,12 +39,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const firestore = useFirestore();
 
   React.useEffect(() => {
-    if (!isEditSheetOpen && !isDeleteModalOpen) {
+    if (!isDeleteModalOpen) {
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 0);
     }
-  }, [isEditSheetOpen, isDeleteModalOpen]);
+  }, [isDeleteModalOpen]);
 
 
   const handleDeleteConfirm = () => {
@@ -91,13 +82,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
     }
   };
   
-  const handleEditSheetOpenChange = (isOpen: boolean) => {
-    setIsEditSheetOpen(isOpen);
-    if (!isOpen) {
-      document.body.style.pointerEvents = 'auto';
-    }
-  };
-  
   const handleDeleteModalOpenChange = (isOpen: boolean) => {
     setIsDeleteModalOpen(isOpen);
      if (!isOpen) {
@@ -117,12 +101,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setIsEditSheetOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
+              <DropdownMenuItem asChild>
+                <Link href={`/projects/${project.id}/edit`} className="flex w-full items-center cursor-pointer">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setIsDeleteModalOpen(true)} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onSelect={() => setIsDeleteModalOpen(true)} className="text-destructive focus:text-destructive cursor-pointer">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
@@ -140,26 +126,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
            <p className="text-sm">Updated {project.updatedAt ? format(project.updatedAt.toDate(), 'PP') : 'N/A'}</p>
         </CardFooter>
       </Card>
-      
-      <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetOpenChange}>
-        <SheetContent className="p-0 sm:max-w-2xl">
-          <SheetHeader className="p-6 pb-4">
-            <SheetTitle>Edit Project</SheetTitle>
-            <SheetDescription>
-              Make changes to your project here. Click save when you're done.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-6.5rem)]">
-            <div className="px-6 pb-6">
-              <ProjectForm
-                project={project}
-                view="sheet"
-                onSuccess={() => handleEditSheetOpenChange(false)}
-              />
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
 
       <Dialog open={isDeleteModalOpen} onOpenChange={handleDeleteModalOpenChange}>
         <DialogContent>

@@ -12,17 +12,7 @@ import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Design, Project } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo, useState } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { DesignForm } from '@/components/design-form';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CardTitle } from '@/components/ui/card';
@@ -67,7 +57,6 @@ function DesignDetailsSkeleton() {
 export default function DesignDetailsPage() {
   const params = useParams<{ id: string }>();
   const firestore = useFirestore();
-  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const { toast } = useToast();
 
   const designRef = useMemo(() => {
@@ -125,31 +114,12 @@ export default function DesignDetailsPage() {
             <Share2 className="mr-2 h-4 w-4" />
             Share
           </Button>
-          <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
-            <SheetTrigger asChild>
-              <Button>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="p-0 sm:max-w-2xl">
-              <SheetHeader className="p-6 pb-4">
-                <SheetTitle>Edit Design</SheetTitle>
-                <SheetDescription>
-                  Make changes to your design here. Click save when you're done.
-                </SheetDescription>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-6.5rem)]">
-                <div className="px-6 pb-6">
-                  <DesignForm
-                    design={design}
-                    view="sheet"
-                    onSuccess={() => setIsEditSheetOpen(false)}
-                  />
-                </div>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
+          <Button asChild>
+            <Link href={`/designs/${design.id}/edit`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
         </div>
       </div>
       <Card className="overflow-hidden">
