@@ -80,6 +80,14 @@ export function UsersTable({ users }: UsersTableProps) {
   const { user: currentUser } = useAuth();
   const firestore = useFirestore();
 
+  React.useEffect(() => {
+    if (!isEditSheetOpen && !isDeleteModalOpen && !isRevokeModalOpen) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 0);
+    }
+  }, [isEditSheetOpen, isDeleteModalOpen, isRevokeModalOpen]);
+
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -216,9 +224,6 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsEditSheetOpen(isOpen);
     if (!isOpen) {
       setUserToEdit(null);
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
     }
   };
   
@@ -226,9 +231,6 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsDeleteModalOpen(isOpen);
     if (!isOpen) {
       setUserToDelete(null);
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
     }
   };
   
@@ -236,9 +238,6 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsRevokeModalOpen(isOpen);
     if (!isOpen) {
       setInviteToRevoke(null);
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
     }
   };
 
