@@ -34,7 +34,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
@@ -59,7 +59,7 @@ export function UsersTable({ users }: UsersTableProps) {
   const [isRevokeModalOpen, setIsRevokeModalOpen] = React.useState(false);
 
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
   const getInitials = (name: string | null | undefined) => {

@@ -34,7 +34,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, deleteDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Checkbox } from './ui/checkbox';
 import { useSearchParams } from 'next/navigation';
@@ -57,7 +57,7 @@ export function DesignsTable({ designs, isPublic = false, userId }: DesignsTable
   const [isPublicConfirmOpen, setIsPublicConfirmOpen] = React.useState(false);
 
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
   
