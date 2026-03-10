@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
@@ -123,15 +123,6 @@ export function GlobalSearch() {
       setIsOpen(false);
     }
   }, [searchQuery]);
-
-  const handleSelectResult = useCallback((value: string) => {
-    const result = searchResults.find(item => item.id === value);
-    if (result) {
-        router.push(result.href);
-    }
-    setIsOpen(false);
-    setSearchQuery('');
-  }, [searchResults, router]);
   
   const groupedResults = useMemo(() => {
     return searchResults.reduce((acc, result) => {
@@ -181,7 +172,11 @@ export function GlobalSearch() {
                 {items.map(item => (
                   <CommandItem
                     key={item.id}
-                    onSelect={handleSelectResult}
+                    onSelect={() => {
+                        router.push(item.href);
+                        setIsOpen(false);
+                        setSearchQuery('');
+                    }}
                     value={item.id}
                     className="flex items-center gap-3 cursor-pointer"
                   >
