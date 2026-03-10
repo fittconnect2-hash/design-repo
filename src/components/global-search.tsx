@@ -171,11 +171,15 @@ export function GlobalSearch() {
       </div>
       
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <Command shouldFilter={false} onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            setIsOpen(false);
-          }
-        }}>
+        <Command 
+          shouldFilter={false}
+          onSelect={handleSelect}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setIsOpen(false);
+            }
+          }}
+        >
           <CommandList>
             {searchResults.length === 0 && searchQuery && !isLoading && (
               <CommandEmpty>No results found.</CommandEmpty>
@@ -185,7 +189,6 @@ export function GlobalSearch() {
                 {items.map(item => (
                   <CommandItem
                     key={item.id}
-                    onSelect={handleSelect}
                     value={item.id}
                     className="flex items-center gap-3 cursor-pointer"
                   >
