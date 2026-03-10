@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover"
 import { Search, Folder, FileText, User as UserIcon, Loader2 } from "lucide-react";
 
 import type { Project, Design, UserProfile } from '@/lib/definitions';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command';
 
 type SearchResult = {
   type: 'Project' | 'Design' | 'User';
@@ -124,11 +124,14 @@ export function GlobalSearch() {
     }
   }, [searchQuery]);
 
-  const handleSelectResult = (href: string) => {
-    router.push(href);
-    setSearchQuery('');
+  const handleSelectResult = useCallback((value: string) => {
+    const result = searchResults.find(item => item.id === value);
+    if (result) {
+        router.push(result.href);
+    }
     setIsOpen(false);
-  };
+    setSearchQuery('');
+  }, [searchResults, router]);
   
   const groupedResults = useMemo(() => {
     return searchResults.reduce((acc, result) => {
@@ -178,8 +181,8 @@ export function GlobalSearch() {
                 {items.map(item => (
                   <CommandItem
                     key={item.id}
-                    onSelect={() => handleSelectResult(item.href)}
-                    value={item.name}
+                    onSelect={handleSelectResult}
+                    value={item.id}
                     className="flex items-center gap-3 cursor-pointer"
                   >
                     {resultIcons[item.type as keyof typeof resultIcons]}
