@@ -139,6 +139,15 @@ export function GlobalSearch() {
     Design: <FileText className="h-4 w-4 text-muted-foreground" />,
     User: <UserIcon className="h-4 w-4 text-muted-foreground" />,
   };
+  
+  const handleSelect = (value: string) => {
+    const result = searchResults.find((r) => r.id === value);
+    if (result) {
+      router.push(result.href);
+      setIsOpen(false);
+      setSearchQuery('');
+    }
+  };
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -162,7 +171,11 @@ export function GlobalSearch() {
       </div>
       
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setIsOpen(false);
+          }
+        }}>
           <CommandList>
             {searchResults.length === 0 && searchQuery && !isLoading && (
               <CommandEmpty>No results found.</CommandEmpty>
@@ -172,11 +185,7 @@ export function GlobalSearch() {
                 {items.map(item => (
                   <CommandItem
                     key={item.id}
-                    onSelect={() => {
-                        router.push(item.href);
-                        setIsOpen(false);
-                        setSearchQuery('');
-                    }}
+                    onSelect={handleSelect}
                     value={item.id}
                     className="flex items-center gap-3 cursor-pointer"
                   >
