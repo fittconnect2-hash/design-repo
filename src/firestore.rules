@@ -111,7 +111,7 @@ service cloud.firestore {
       
       // Only owner or admin can write.
       allow create: if (isOwner(request.resource.data.userId)) || isAdmin();
-      allow update: if (isOwner(resource.data.userId) && hasImmutableOwnerId()) || isAdmin();
+      allow update: if isOwner(resource.data.userId) || isAdmin();
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
