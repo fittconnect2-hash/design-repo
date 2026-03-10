@@ -140,8 +140,8 @@ export function GlobalSearch() {
     User: <UserIcon className="h-4 w-4 text-muted-foreground" />,
   };
   
-  const handleSelect = (href: string) => {
-    router.push(href);
+  const handleSelect = (value: string) => {
+    router.push(value);
     setIsOpen(false);
     setSearchQuery('');
   };
@@ -170,6 +170,7 @@ export function GlobalSearch() {
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command 
           shouldFilter={false}
+          onSelect={handleSelect}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               setIsOpen(false);
@@ -185,8 +186,7 @@ export function GlobalSearch() {
                 {items.map(item => (
                   <CommandItem
                     key={item.id}
-                    value={item.id}
-                    onSelect={() => handleSelect(item.href)}
+                    value={item.href}
                     className="flex items-center gap-3 cursor-pointer"
                   >
                     {resultIcons[item.type as keyof typeof resultIcons]}
