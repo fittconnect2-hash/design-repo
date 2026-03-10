@@ -48,7 +48,10 @@ service cloud.firestore {
     }
 
     function hasImmutableOwnerId() {
-      return request.resource.data.userId == resource.data.userId;
+      // The userId must not change. This is checked by seeing if the userId
+      // is not in the request data, or if it is, that it's the same.
+      return !('userId' in request.resource.data) ||
+             request.resource.data.userId == resource.data.userId;
     }
 
     function isSuperAdmin() {
