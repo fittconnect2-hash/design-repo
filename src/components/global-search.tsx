@@ -170,7 +170,6 @@ export function GlobalSearch() {
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command 
           shouldFilter={false}
-          onSelect={handleSelect}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               setIsOpen(false);
@@ -187,6 +186,7 @@ export function GlobalSearch() {
                   <CommandItem
                     key={item.id}
                     value={item.href}
+                    onSelect={handleSelect}
                     className="flex items-center gap-3 cursor-pointer"
                   >
                     {resultIcons[item.type as keyof typeof resultIcons]}
