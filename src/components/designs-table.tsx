@@ -350,7 +350,7 @@ export function DesignsTable({ designs, isPublic = false, userId }: DesignsTable
                         {design.figmaLink ? (
                           <a href={design.figmaLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
                             <Figma className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{design.figmaLink}</span>
+                            <span className="truncate">{design.figmaLink.length > 30 ? `${design.figmaLink.substring(0, 30)}...` : design.figmaLink}</span>
                           </a>
                         ) : <span className="text-muted-foreground">N/A</span>}
                       </TableCell>
@@ -358,7 +358,7 @@ export function DesignsTable({ designs, isPublic = false, userId }: DesignsTable
                         {design.prototypeUrl ? (
                           <a href={design.prototypeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
                             <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{design.prototypeUrl}</span>
+                            <span className="truncate">{design.prototypeUrl.length > 30 ? `${design.prototypeUrl.substring(0, 30)}...` : design.prototypeUrl}</span>
                           </a>
                         ) : <span className="text-muted-foreground">N/A</span>}
                       </TableCell>

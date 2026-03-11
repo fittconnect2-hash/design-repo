@@ -157,7 +157,7 @@ export default function PublicDesignDetailsPage() {
                                 <Figma className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.figmaLink}</div>
+                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.figmaLink.length > 30 ? `${design.figmaLink.substring(0,30)}...` : design.figmaLink}</div>
                             </CardContent>
                         </Card>
                     </a>
@@ -168,7 +168,7 @@ export default function PublicDesignDetailsPage() {
                                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.prototypeUrl}</div>
+                                <div className="text-lg font-bold text-primary group-hover:underline truncate">{design.prototypeUrl.length > 30 ? `${design.prototypeUrl.substring(0,30)}...` : design.prototypeUrl}</div>
                             </CardContent>
                         </Card>
                     </a>
