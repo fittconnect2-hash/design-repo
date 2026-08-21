@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { collection, orderBy, query } from 'firebase/firestore';
+import { Download, FileJson, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import type { Design, Project } from '@/lib/definitions';
@@ -18,6 +21,13 @@ import {
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { ShareProjectsButton } from '@/components/share-projects-button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 function DesignsPageSkeleton() {
   return (
@@ -70,6 +80,51 @@ export default function DesignsPage() {
     return tempDesigns;
   }, [designs, selectedProjectId, statusFilter]);
 
+  const handleExportCSV = () => {
+    if (!filteredDesigns || filteredDesigns.length === 0) return;
+    const headers = ['Name', 'Project', 'Version', 'Description', 'Figma Link', 'Prototype URL', 'Tags', 'Status', 'Updated At'];
+    const rows = filteredDesigns.map(d => [
+        d.name,
+        d.projectName || 'N/A',
+        d.version,
+        d.description,
+        d.figmaLink,
+        d.prototypeUrl,
+        d.tags?.join(', ') || '',
+        d.isPublic ? 'Public' : 'Private',
+        d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
+    ]);
+    
+    const csvContent = [headers, ...rows].map(e => e.map(String).map(s => `"${s.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `designs_export_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportExcel = () => {
+    if (!filteredDesigns || filteredDesigns.length === 0) return;
+    const data = filteredDesigns.map(d => ({
+        'Name': d.name,
+        'Project': d.projectName || 'N/A',
+        'Version': d.version,
+        'Description': d.description,
+        'Figma Link': d.figmaLink,
+        'Prototype URL': d.prototypeUrl,
+        'Tags': d.tags?.join(', ') || '',
+        'Status': d.isPublic ? 'Public' : 'Private',
+        'Updated At': d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Designs");
+    XLSX.writeFile(workbook, `designs_export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+  };
+
 
   const isLoading = isUserLoading || (user && (isLoadingDesigns || isLoadingProjects));
 
@@ -88,6 +143,27 @@ export default function DesignsPage() {
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
         <div className="flex items-center gap-2">
+          {hasDesigns && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileJson className="mr-2 h-4 w-4" />
+                  As CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  As Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {user && <ShareProjectsButton userId={user.uid} projects={projects || []} />}
           <AddDesignButton buttonText="Add Design" />
         </div>

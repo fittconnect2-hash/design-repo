@@ -76,3 +76,14 @@ export type Notification = {
   isRead: boolean;
   createdAt: any;
 };
+
+export type Note = {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  tags: string[];
+  color: string;
+  createdAt: any;
+  updatedAt: any;
+};

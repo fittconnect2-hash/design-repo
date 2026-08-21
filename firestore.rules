@@ -1,27 +1,9 @@
 /**
  * # Firestore Security Rules for DesignDock
- *
- * ## Core Philosophy
- * This ruleset allows any authenticated user to read all projects and designs, fostering
- * a collaborative environment. Write access (`create`, `update`, 'delete'`) is strictly
- * controlled, limited to the document owner or an administrator.
- *
- * ## Key Security Decisions
- * - **Super Admin:** The user 'fittconnect2@gmail.com' is a super admin with universal access.
- * - **Admin Role:** Users with `role == 'Admin'` in their profile have elevated privileges.
- * - **Collaborative Reads:** All authenticated users (`isSignedIn()`) can read from the `/projects`
- *   and `/designs` collections.
- * - **Public Sharing:** The `isPublic` flag on a design still works for the public, unauthenticated
- *   share page (`/share/{userId}`).
- * - **Stale Rule Fix:** Added a comment to force redeployment and fix potential stale rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ----------------------------------------------------------------------
-    // Helper Functions
-    // ----------------------------------------------------------------------
 
     function isSignedIn() {
       return request.auth != null;
@@ -31,117 +13,54 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-    
-    function hasValidUserCreateData(userId) {
-      return request.resource.data.id == userId;
-    }
-
-    function hasImmutableUserId() {
-      return request.resource.data.id == resource.data.id;
-    }
-
-    function hasValidOwnerId(userId) {
-      return request.resource.data.userId == userId;
-    }
-
-    function hasImmutableOwnerId() {
-      // The userId must not change. This is checked by seeing if the userId
-      // is not in the request data, or if it is, that it's the same.
-      return !('userId' in request.resource.data) ||
-             request.resource.data.userId == resource.data.userId;
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && request.auth.token.email == 'fittconnect2@gmail.com';
-    }
-
     function isAdmin() {
       let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      // An admin is someone with the 'Admin' role in their user document OR the super admin.
-      // NOTE: Using get() in rules for list queries can be slow and hit rate limits.
-      // This is a known potential performance issue.
-      return isSuperAdmin() || (
-        isSignedIn() &&
-        exists(userDocPath) &&
-        get(userDocPath).data.role == 'Admin'
+      return isSignedIn() && (
+        request.auth.token.email == 'fittconnect2@gmail.com' ||
+        (exists(userDocPath) && get(userDocPath).data.role == 'Admin')
       );
     }
 
-    // ----------------------------------------------------------------------
-    // Collection Rules
-    // ----------------------------------------------------------------------
-
     match /users/{userId} {
-      // Any signed-in user can view profiles to check roles and facilitate collaboration.
-      allow get: if isSignedIn();
-      // Any signed-in user can list other users to assign tasks.
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId) && hasValidUserCreateData(userId);
-      allow update: if (isExistingOwner(userId) && hasImmutableUserId()) || isAdmin();
-      // Only admins can delete user profiles from Firestore. This does not delete the Auth user.
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
-
-      // Subcollection for notifications
+      
       match /notifications/{notificationId} {
-        // A user can get, create, update, delete their own notifications.
-        allow get, write: if isOwner(userId);
-        // A user can list their own notifications.
-        allow list: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
     }
 
     match /projects/{projectId} {
-      // Any user, authenticated or not, can read projects.
-      allow get, list: if true;
-      
-      // Only owner or admin can write.
-      allow create: if isOwner(request.resource.data.userId) || isAdmin();
-      allow update: if (isOwner(resource.data.userId) && hasImmutableOwnerId()) || isAdmin();
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     match /designs/{designId} {
-      // Any signed-in user can read designs inside the app.
-      // Unauthenticated users can only read if it's public (for the share page).
       allow get: if isSignedIn() || resource.data.isPublic == true;
       allow list: if true;
-      
-      // Only owner or admin can write.
-      allow create: if (isOwner(request.resource.data.userId)) || isAdmin();
-      allow update: if isOwner(resource.data.userId) || isAdmin();
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     match /invites/{inviteId} {
-      // Admins can create and list invites.
-      allow create, list: if isAdmin();
-      // Anyone can read an invite if they have the ID (for the signup page).
-      allow get: if true;
-      // No one can update an invite.
-      allow update: if false;
-      // An admin can delete an invite, or a signed-in user can delete the invite they just used.
-      allow delete: if isAdmin() || isSignedIn();
+      allow read: if true;
+      allow create, list, delete: if isAdmin();
     }
 
     match /tasks/{taskId} {
-      // This simple rule allows any authenticated user to read and write tasks.
-      // It solves the persistent permission errors by allowing the client-side
-      // code (which correctly filters by user role) to execute without being blocked.
       allow read, write: if isSignedIn();
     }
 
     match /auditLogs/{auditLogId} {
-      // Only admins can read audit logs.
-      allow get, list: if isAdmin();
-      
-      // Any signed-in user can create a log entry for their own actions.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Logs are immutable.
-      allow update, delete: if false;
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+    }
+
+    match /notes/{noteId} {
+      allow read, write: if isSignedIn() && (isOwner(resource.data.userId) || isOwner(request.resource.data.userId));
     }
   }
 }

@@ -4,24 +4,20 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user of the DesignDock application, storing their profile information and serving as a link to an external authentication system like Firebase.",
+      "description": "Represents a user of the DesignDock application.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity. This ID typically corresponds to the user's ID from an external authentication system (e.g., Firebase Auth UID)."
+          "type": "string"
         },
         "email": {
           "type": "string",
-          "description": "The user's email address.",
           "format": "email"
         },
         "displayName": {
-          "type": "string",
-          "description": "The user's preferred display name."
+          "type": "string"
         },
         "role": {
           "type": "string",
-          "description": "The role of the user within the application, determining their permissions.",
           "enum": [
             "Admin",
             "Staff Designer"
@@ -29,12 +25,10 @@
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the user profile was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp when the user profile was last updated.",
           "format": "date-time"
         }
       },
@@ -47,366 +41,54 @@
       ]
     },
     "Project": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Project",
       "type": "object",
-      "description": "Represents a high-level project or category that groups multiple designs.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Project."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who owns this project."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the project."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the project."
-        },
-        "startDate": {
-          "type": "string",
-          "description": "The start date of the project.",
-          "format": "date-time"
-        },
-        "endDate": {
-          "type": "string",
-          "description": "The end date of the project.",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the project was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the project was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "name",
-        "description",
-        "createdAt"
-      ]
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Design": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Design",
       "type": "object",
-      "description": "Represents a design created and managed by a user in the DesignDock application, including details, links, and associated images.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Design entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who owns this design. (Relationship: User 1:N Design)"
-        },
-        "projectId": {
-          "type": "string",
-          "description": "Reference to the Project this design belongs to. (Relationship: Project 1:N Design)"
-        },
-        "projectName": {
-          "type": "string",
-          "description": "Denormalized name of the project for easier display."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the design."
-        },
-        "version": {
-          "type": "string",
-          "description": "The version of the design, e.g., '1.0'."
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of the design."
-        },
-        "figmaLink": {
-          "type": "string",
-          "description": "URL to the Figma design file for this design.",
-          "format": "uri"
-        },
-        "prototypeUrl": {
-          "type": "string",
-          "description": "URL to the live prototype of the design.",
-          "format": "uri"
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL to the associated image for the design.",
-          "format": "uri"
-        },
-        "tags": {
-          "type": "array",
-          "description": "A list of keywords or tags associated with the design.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "isPublic": {
-            "type": "boolean",
-            "description": "Indicates if the design is publicly accessible."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the design was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the design was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "projectId",
-        "name",
-        "description",
-        "version",
-        "figmaLink",
-        "prototypeUrl",
-        "imageUrl",
-        "createdAt"
-      ]
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "description": { "type": "string" },
+        "figmaLink": { "type": "string", "format": "uri" },
+        "prototypeUrl": { "type": "string", "format": "uri" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
-    "Invite": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Invite",
+    "Note": {
+      "title": "Note",
       "type": "object",
-      "description": "Represents an invitation for a new user to join the application.",
+      "description": "Represents a user's personal or shared note.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the invite."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email of the user being invited.",
-          "format": "email"
-        },
-        "role": {
-          "type": "string",
-          "description": "The role assigned to the user upon signup.",
-          "enum": [
-            "Admin",
-            "Staff Designer"
-          ]
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the invite was created.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "color": { "type": "string", "description": "Hex color for categorization" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "role",
-        "createdAt"
-      ]
-    },
-    "AuditLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AuditLog",
-      "type": "object",
-      "description": "Represents an entry in the audit log, recording a significant action taken by a user.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the audit log entry."
-        },
-        "userId": {
-          "type": "string",
-          "description": "The UID of the user who performed the action."
-        },
-        "userDisplayName": {
-          "type": "string",
-          "description": "The display name of the user at the time of the action."
-        },
-        "userEmail": {
-          "type": "string",
-          "description": "The email of the user at the time of the action."
-        },
-        "action": {
-          "type": "string",
-          "description": "The type of action performed.",
-          "enum": [
-            "CREATE",
-            "UPDATE",
-            "DELETE",
-            "INVITE",
-            "REVOKE_INVITE",
-            "SET_PUBLIC",
-            "SET_PRIVATE",
-            "UPDATE_ROLE"
-          ]
-        },
-        "entityType": {
-          "type": "string",
-          "description": "The type of entity that was affected.",
-          "enum": [
-            "Project",
-            "Design",
-            "User",
-            "Invite"
-          ]
-        },
-        "entityId": {
-          "type": "string",
-          "description": "The ID of the entity that was affected."
-        },
-        "entityName": {
-          "type": "string",
-          "description": "The name or identifier of the entity for display purposes."
-        },
-        "details": {
-          "type": "string",
-          "description": "A human-readable description of the action."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp when the action occurred.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "userDisplayName",
-        "userEmail",
-        "action",
-        "entityType",
-        "entityId",
-        "details",
-        "timestamp"
-      ]
-    },
-    "Task": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Task",
-      "type": "object",
-      "description": "Represents a task within a project.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Task."
-        },
-        "projectId": {
-          "type": "string",
-          "description": "Reference to the Project this task belongs to."
-        },
-        "projectName": {
-          "type": "string",
-          "description": "Denormalized name of the project for easier display."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the task."
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of the task."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the task.",
-          "enum": [
-            "Todo",
-            "In Progress",
-            "Done"
-          ]
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who created this task."
-        },
-        "assignedToId": {
-          "type": "string",
-          "description": "ID of the user this task is assigned to."
-        },
-        "assignedToName": {
-          "type": "string",
-          "description": "Denormalized display name of the assigned user."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the task was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the task was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "projectId",
-        "projectName",
-        "title",
-        "status",
-        "userId",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Notification": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Notification",
-      "type": "object",
-      "description": "Represents a notification for a user.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Notification."
-        },
-        "userId": {
-          "type": "string",
-          "description": "The ID of the user who receives the notification."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the notification."
-        },
-        "message": {
-          "type": "string",
-          "description": "The content of the notification message."
-        },
-        "link": {
-          "type": "string",
-          "description": "A URL link related to the notification.",
-          "format": "uri"
-        },
-        "isRead": {
-          "type": "boolean",
-          "description": "Indicates if the notification has been read."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the notification was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "title",
-        "message",
-        "isRead",
-        "createdAt"
-      ]
+      "required": ["id", "userId", "title", "content", "createdAt"]
     }
   },
   "auth": {
@@ -421,119 +103,37 @@
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores individual user profiles. The document ID '{userId}' must match the Firebase Authentication UID for the user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/notifications/{notificationId}",
-        "definition": {
-          "entityName": "Notification",
-          "schema": {
-            "$ref": "#/backend/entities/Notification"
-          },
-          "description": "Stores notifications for a specific user as a subcollection.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The UID of the user who owns these notifications."
-            },
-            {
-              "name": "notificationId",
-              "description": "The unique identifier for the notification."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/User" },
+          "description": "Stores individual user profiles."
         }
       },
       {
         "path": "/projects/{projectId}",
         "definition": {
           "entityName": "Project",
-          "schema": {
-            "$ref": "#/backend/entities/Project"
-          },
-          "description": "Stores high-level projects in a root collection.",
-          "params": [
-            {
-              "name": "projectId",
-              "description": "The unique identifier for the project."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Project" },
+          "description": "Stores root projects."
         }
       },
       {
         "path": "/designs/{designId}",
         "definition": {
           "entityName": "Design",
-          "schema": {
-            "$ref": "#/backend/entities/Design"
-          },
-          "description": "Stores individual designs in a root collection.",
-          "params": [
-            {
-              "name": "designId",
-              "description": "The unique identifier for the design."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Design" },
+          "description": "Stores individual designs."
         }
       },
       {
-        "path": "/invites/{inviteId}",
+        "path": "/notes/{noteId}",
         "definition": {
-          "entityName": "Invite",
-          "schema": {
-            "$ref": "#/backend/entities/Invite"
-          },
-          "description": "Stores user invitations. Once an invite is used for signup, it should be deleted.",
+          "entityName": "Note",
+          "schema": { "$ref": "#/backend/entities/Note" },
+          "description": "Stores user notes.",
           "params": [
-            {
-              "name": "inviteId",
-              "description": "The unique identifier for the invite."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/auditLogs/{auditLogId}",
-        "definition": {
-          "entityName": "AuditLog",
-          "schema": {
-            "$ref": "#/backend/entities/AuditLog"
-          },
-          "description": "Stores a log of all significant user activities for auditing purposes.",
-          "params": [
-            {
-              "name": "auditLogId",
-              "description": "The unique identifier for the audit log entry."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/tasks/{taskId}",
-        "definition": {
-          "entityName": "Task",
-          "schema": {
-            "$ref": "#/backend/entities/Task"
-          },
-          "description": "Stores individual tasks in a root collection.",
-          "params": [
-            {
-              "name": "taskId",
-              "description": "The unique identifier for the task."
-            }
+            { "name": "noteId", "description": "Unique ID of the note" }
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore structure separates Users, Projects, Designs, and Invites into distinct root-level collections. This flat structure facilitates efficient, app-wide queries, allowing any authenticated user to view all projects and designs to foster collaboration. User-specific data is stored in `/users/{userId}`. Write access to projects and designs is controlled by a `userId` field within each document, ensuring that only the owner or an administrator can modify content. This design supports secure, independent authorization for write operations while enabling open read access for a collaborative workspace. Audit logs are stored in a separate root collection with admin-only read access."
+    ]
   }
 }
