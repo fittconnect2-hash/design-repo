@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { collection, orderBy, query, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, orderBy, query, doc, deleteDoc, setDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Search, Plus, MoreVertical, Trash2, Edit, Tag, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -43,7 +43,12 @@ export default function NotesPage() {
   const notesQuery = useMemo(() => {
     if (!user) return null;
     const collRef = collection(firestore, 'notes');
-    return query(collRef, orderBy('updatedAt', 'desc'));
+    // We MUST filter by userId here to match the security rules
+    return query(
+      collRef, 
+      where('userId', '==', user.uid),
+      orderBy('updatedAt', 'desc')
+    );
   }, [firestore, user]);
 
   const { data: notes, isLoading } = useCollection<Note>(notesQuery);

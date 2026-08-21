@@ -143,5 +143,14 @@ service cloud.firestore {
       // Logs are immutable.
       allow update, delete: if false;
     }
+
+    match /notes/{noteId} {
+      // Allow user to see only their own notes
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow user to create notes for themselves
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Allow user to update/delete their own notes
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
   }
 }
