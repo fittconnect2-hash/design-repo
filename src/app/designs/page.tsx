@@ -91,14 +91,14 @@ export default function DesignsPage() {
 
   const handleExportCSV = () => {
     if (!filteredDesigns || filteredDesigns.length === 0) return;
-    const headers = ['Name', 'Project', 'Version', 'Description', 'Figma Link', 'Prototype URL', 'Tags', 'Status', 'Updated At'];
+    const headers = ['Design Name', 'Project Name', 'Version', 'Description', 'Figma Link', 'Prototype URL', 'Tags', 'Visibility', 'Last Updated'];
     const rows = filteredDesigns.map(d => [
         d.name,
         d.projectName || 'N/A',
         d.version,
-        d.description,
-        d.figmaLink,
-        d.prototypeUrl,
+        d.description?.replace(/\n/g, " ") || 'No description',
+        d.figmaLink || 'N/A',
+        d.prototypeUrl || 'N/A',
         d.tags?.join(', ') || '',
         d.isPublic ? 'Public' : 'Private',
         d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
@@ -109,7 +109,7 @@ export default function DesignsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `designs_export_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    link.setAttribute("download", `designdock_export_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -117,21 +117,38 @@ export default function DesignsPage() {
 
   const handleExportExcel = () => {
     if (!filteredDesigns || filteredDesigns.length === 0) return;
+    
     const data = filteredDesigns.map(d => ({
-        'Name': d.name,
-        'Project': d.projectName || 'N/A',
+        'Design Name': d.name,
+        'Project Name': d.projectName || 'N/A',
         'Version': d.version,
-        'Description': d.description,
-        'Figma Link': d.figmaLink,
-        'Prototype URL': d.prototypeUrl,
+        'Description': d.description || '',
+        'Figma Link': d.figmaLink || '',
+        'Prototype URL': d.prototypeUrl || '',
         'Tags': d.tags?.join(', ') || '',
-        'Status': d.isPublic ? 'Public' : 'Private',
-        'Updated At': d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
+        'Visibility': d.isPublic ? 'Public' : 'Private',
+        'Last Updated': d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
     }));
+
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Designs");
-    XLSX.writeFile(workbook, `designs_export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+    
+    // Set professional column widths
+    const wscols = [
+      {wch: 35}, // Design Name
+      {wch: 25}, // Project Name
+      {wch: 10}, // Version
+      {wch: 50}, // Description
+      {wch: 40}, // Figma Link
+      {wch: 40}, // Prototype URL
+      {wch: 20}, // Tags
+      {wch: 12}, // Visibility
+      {wch: 20}, // Last Updated
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Design Repository");
+    XLSX.writeFile(workbook, `designdock_export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
   };
 
 

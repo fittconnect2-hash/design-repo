@@ -18,7 +18,6 @@ import {
   Archive,
   Users,
   Trello,
-  StickyNote,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDoc, useFirestore, useUser } from "@/firebase";
@@ -41,7 +40,6 @@ const insightsLinks: NavLink[] = [
 const workspaceLinks: NavLink[] = [
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/designs", label: "Design Repo", icon: Archive },
-  { href: "/notes", label: "Notes", icon: StickyNote },
 ];
 
 const adminLinks: NavLink[] = [
@@ -108,7 +106,6 @@ export function SidebarNav() {
         <SidebarGroup>
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuSkeleton showIcon />
             <SidebarMenuSkeleton showIcon />
             <SidebarMenuSkeleton showIcon />
           </SidebarMenu>
