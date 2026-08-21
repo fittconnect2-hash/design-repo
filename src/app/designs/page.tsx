@@ -97,8 +97,8 @@ export default function DesignsPage() {
         d.projectName || 'N/A',
         d.version,
         d.description?.replace(/\n/g, " ") || 'No description',
-        d.figmaLink || 'N/A',
-        d.prototypeUrl || 'N/A',
+        d.figmaLink || '',
+        d.prototypeUrl || '',
         d.tags?.join(', ') || '',
         d.isPublic ? 'Public' : 'Private',
         d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
@@ -118,32 +118,54 @@ export default function DesignsPage() {
   const handleExportExcel = () => {
     if (!filteredDesigns || filteredDesigns.length === 0) return;
     
-    const data = filteredDesigns.map(d => ({
-        'Design Name': d.name,
-        'Project Name': d.projectName || 'N/A',
-        'Version': d.version,
-        'Description': d.description || '',
-        'Figma Link': d.figmaLink || '',
-        'Prototype URL': d.prototypeUrl || '',
-        'Tags': d.tags?.join(', ') || '',
-        'Visibility': d.isPublic ? 'Public' : 'Private',
-        'Last Updated': d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
-    }));
+    // Create professional headers and data array for Worksheet
+    const headers = ['Design Name', 'Project Name', 'Version', 'Description', 'Figma Link', 'Prototype URL', 'Tags', 'Visibility', 'Last Updated'];
+    const rowData = filteredDesigns.map(d => [
+        d.name,
+        d.projectName || 'N/A',
+        d.version,
+        d.description || '',
+        d.figmaLink || '',
+        d.prototypeUrl || '',
+        d.tags?.join(', ') || '',
+        d.isPublic ? 'Public' : 'Private',
+        d.updatedAt ? format(d.updatedAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'
+    ]);
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rowData]);
+
+    // Add functional hyperlinks for Figma and Prototype URLs (Columns E and F, index 4 and 5)
+    filteredDesigns.forEach((d, idx) => {
+        const rowNum = idx + 2; // +1 for 0-indexed offset, +1 for header row
+        
+        if (d.figmaLink) {
+            const cellRef = XLSX.utils.encode_cell({ r: rowNum - 1, c: 4 });
+            if (worksheet[cellRef]) {
+                worksheet[cellRef].l = { Target: d.figmaLink, Tooltip: "Click to open Figma design" };
+            }
+        }
+        
+        if (d.prototypeUrl) {
+            const cellRef = XLSX.utils.encode_cell({ r: rowNum - 1, c: 5 });
+            if (worksheet[cellRef]) {
+                worksheet[cellRef].l = { Target: d.prototypeUrl, Tooltip: "Click to view prototype" };
+            }
+        }
+    });
+
     const workbook = XLSX.utils.book_new();
     
-    // Set professional column widths
+    // Set professional column widths for optimal viewing
     const wscols = [
       {wch: 35}, // Design Name
       {wch: 25}, // Project Name
       {wch: 10}, // Version
       {wch: 50}, // Description
-      {wch: 40}, // Figma Link
-      {wch: 40}, // Prototype URL
-      {wch: 20}, // Tags
+      {wch: 45}, // Figma Link
+      {wch: 45}, // Prototype URL
+      {wch: 25}, // Tags
       {wch: 12}, // Visibility
-      {wch: 20}, // Last Updated
+      {wch: 22}, // Last Updated
     ];
     worksheet['!cols'] = wscols;
 
