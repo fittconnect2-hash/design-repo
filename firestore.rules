@@ -60,8 +60,11 @@ service cloud.firestore {
     }
 
     match /notes/{noteId} {
-      // Allow user to see only their own notes
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow user to list only their own notes. 
+      // The query MUST include a filter where('userId', '==', auth.uid)
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow individual document access
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
       // Allow user to create notes for themselves
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       // Allow user to update/delete their own notes
