@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, doc } from 'firebase/firestore';
 import { Download, FileJson, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
-import { useCollection, useFirestore, useUser } from '@/firebase';
-import type { Design, Project } from '@/lib/definitions';
+import { useCollection, useFirestore, useUser, useDoc } from '@/firebase';
+import type { Design, Project, UserProfile } from '@/lib/definitions';
 import { DesignsTable } from '@/components/designs-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddDesignButton } from '@/components/add-design-button';
@@ -47,6 +47,15 @@ export default function DesignsPage() {
   const firestore = useFirestore();
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Admin check
+  const userProfileRef = useMemo(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  const isSuperAdminByEmail = user?.email === 'fittconnect2@gmail.com';
+  const isAdmin = useMemo(() => isSuperAdminByEmail || userProfile?.role === 'Admin', [isSuperAdminByEmail, userProfile]);
 
   const designsQuery = useMemo(() => {
     if (!user) return null;
@@ -126,7 +135,7 @@ export default function DesignsPage() {
   };
 
 
-  const isLoading = isUserLoading || (user && (isLoadingDesigns || isLoadingProjects));
+  const isLoading = isUserLoading || isUserProfileLoading || (user && (isLoadingDesigns || isLoadingProjects));
 
   if (isLoading) {
     return <DesignsPageSkeleton />;
@@ -143,7 +152,7 @@ export default function DesignsPage() {
           <p className="text-muted-foreground">A complete repository of all your designs.</p>
         </div>
         <div className="flex items-center gap-2">
-          {hasDesigns && (
+          {hasDesigns && isAdmin && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
